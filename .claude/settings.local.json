@@ -5,7 +5,10 @@
       "Bash(git --no-pager diff --cached)",
       "Bash(git --no-pager log --oneline -5)",
       "Bash(git --no-pager log --oneline -1)",
-      "Bash(git --no-pager diff .claude/settings.local.json)"
+      "Bash(git --no-pager diff .claude/settings.local.json)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git --no-pager log --oneline -3)"
     ],
     "deny": [],
     "ask": []
