@@ -6,7 +6,7 @@
 
 AWSサーバーレスアーキテクチャを全面採用し、React 19 + TypeScriptによるモダンなフロントエンド、Node.js 22.x + TypeScriptによるLambda関数群、DynamoDBとS3による永続化層を組み合わせた、スケーラブルで保守性の高いシステムを構築します。WebSocketによるリアルタイム双方向通信により、50-100ms以内の低遅延な正誤判定とランキング更新を実現し、ユーザーに緊張感のあるゲーム体験を提供します。
 
-インフラストラクチャはTerraformでコード管理し、GitHub Actionsによる自動化されたCI/CDパイプラインを通じて、再現性と保守性を確保します。初期構成では本番環境（prd）のみを展開し、将来的に開発環境（dev）・ステージング環境（stg）を追加可能な拡張性の高い設計を採用します。
+インフラストラクチャはTerraformでコード管理し、**別リポジトリ（hima-five-bomber-infrastructure）**で管理します。これにより、アプリケーションコードとインフラコードのライフサイクルを分離し、デプロイ戦略を柔軟に管理できます。GitHub Actionsによる自動化されたCI/CDパイプラインを通じて、再現性と保守性を確保します。初期構成では本番環境（prd）のみを展開し、将来的に開発環境（dev）・ステージング環境（stg）を追加可能な拡張性の高い設計を採用します。
 
 ### Goals
 
@@ -87,8 +87,8 @@ graph TB
 - Terraformによる全リソースのIaC化により、再現性を確保
 
 **Steeringコンプライアンス**:
-- `structure.md`: モジュール化されたディレクトリ構造に準拠
-- `tech.md`: 指定された技術スタック（React 18, TypeScript, Tailwind CSS, Lambda, DynamoDB, Terraform）を使用
+- `structure.md`: モジュール化されたディレクトリ構造に準拠。インフラコードは別リポジトリ（hima-five-bomber-infrastructure）で管理
+- `tech.md`: 指定された技術スタック（React 19, TypeScript, Tailwind CSS, Lambda, DynamoDB, Terraform）を使用
 - `product.md`: リアルタイム対戦、マルチチーム対応、表記ゆれ対応の要件を満たす設計
 
 ### Technology Stack and Design Decisions
@@ -107,8 +107,9 @@ graph TB
 - **S3**: オブジェクトストレージ - 静的ホスティングと問題JSON格納
 - **CloudFront**: CDN - グローバルな低レイテンシ配信
 
-#### Infrastructure as Code
+#### Infrastructure as Code (別リポジトリ管理)
 - **Terraform**: インフラ定義 - 宣言的な構成管理と再現性
+- **Repository**: `hima-five-bomber-infrastructure` - アプリケーションコードとライフサイクルを分離
 
 #### CI/CD
 - **GitHub Actions**: 自動化パイプライン - Lint, Test, Build, Deployの自動化
@@ -1128,7 +1129,137 @@ interface StructuredLog {
 - LocalStack（ローカルAWSエミュレート）によるDynamoDB、S3のモック
 - WebSocket接続のモックサーバー
 
-### E2E Tests
+### E2E Tests（ATDD: Acceptance Test-Driven Development）
+
+**テスト方針**:
+- **ATDD（受け入れテスト駆動開発）**を採用し、requirements.mdの要件を満たしているかを検証
+- 各要件に対応するAcceptance Criteriaをテストケースとして実装
+- Given-When-Then形式でシナリオを記述
+- 要件のトレーサビリティを確保（要件ID → テストケースのマッピング）
+
+**テストフレームワーク**:
+- Playwright（ブラウザ自動化）
+- Cucumber/Gherkin記法（将来検討: BDDスタイルでの記述）
+
+**Acceptance Tests（要件ベース）**:
+
+#### R-001: ルーム管理機能
+```gherkin
+Scenario: ホストがルームを作成する
+  Given ユーザーがトップ画面を開いている
+  When "ルーム作成"ボタンをクリックする
+  Then ユニークなルームIDが生成される
+  And ホストとしてルームに登録される
+  And ルーム待機画面に遷移する
+  [Requirement: R-001.1, R-001.2]
+
+Scenario: プレイヤーがルームに参加する
+  Given ホストが作成したルームが存在する
+  And プレイヤー数が5未満である
+  When プレイヤーがルームIDを入力して参加する
+  Then プレイヤーリストに追加される
+  And リアルタイムで他のプレイヤーに通知される
+  [Requirement: R-001.3, R-001.5]
+
+Scenario: ルームが満員の場合の参加拒否
+  Given ルームに5人のプレイヤーが参加している
+  When 6人目のプレイヤーが参加しようとする
+  Then エラーメッセージが表示される
+  And 参加が拒否される
+  [Requirement: R-001.4]
+```
+
+#### R-002: ゲームプレイ機能
+```gherkin
+Scenario: 5人で順番に回答する
+  Given ゲームが開始されている
+  And 5人のプレイヤーが参加している
+  When 1番目のプレイヤーが回答を送信する
+  Then WebSocketで正誤判定が50-100ms以内に返却される
+  And 正解の場合、2番目のプレイヤーにフォーカスが移動する
+  And 不正解の場合、1番目のプレイヤーが再回答できる
+  [Requirement: R-002.1, R-002.2, R-002.5]
+
+Scenario: 回答順の視覚的表示
+  Given ゲームプレイ画面が表示されている
+  When 現在の回答順が3番目である
+  Then 5つの回答枠が表示される
+  And 3番目の回答枠がハイライト表示される
+  And 自分の回答枠が特別な色で強調表示される
+  [Requirement: R-002.3, R-002.4, R-002.5]
+
+Scenario: タイマーのカウントダウン表示
+  Given ゲームが開始されている
+  When タイマーが30秒からカウントダウンする
+  Then 残り時間が秒単位で表示される
+  And 残り5秒以下で強調表示される
+  [Requirement: R-002.6, R-002.7]
+```
+
+#### R-003: スコアリング機能
+```gherkin
+Scenario: スコア計算ロジックの検証
+  Given 5つの正解を回答した
+  And 残り時間が10秒である
+  When ゲームが完了する
+  Then 正解スコアが50点（10点×5）である
+  And 時間ボーナスが10点（1秒×10）である
+  And 合計スコアが60点である
+  [Requirement: R-003.1, R-003.2, R-003.3]
+```
+
+#### R-004: リアルタイムランキング
+```gherkin
+Scenario: ランキングのリアルタイム更新
+  Given 複数のルームがゲームをプレイしている
+  When あるルームが問題をクリアする
+  Then 全ルームに200ms以内にランキング更新が配信される
+  And ランキング画面がリアルタイムで更新される
+  [Requirement: R-004.1, R-004.2, R-004.3]
+```
+
+#### R-006: 正誤判定・表記ゆれ対応
+```gherkin
+Scenario: 表記ゆれの許容判定
+  Given 正解が"東京"である
+  When プレイヤーが"とうきょう"と回答する
+  Then 正解として判定される
+  [Requirement: R-006.2]
+
+Scenario: 半角・全角の自動変換
+  Given 正解が"Tokyo"である
+  When プレイヤーが"Tokyo"（全角）と回答する
+  Then 正解として判定される
+  [Requirement: R-006.3]
+```
+
+#### R-007: レスポンシブデザイン
+```gherkin
+Scenario: PC・スマホでの表示確認
+  Given ゲームプレイ画面が表示されている
+  When デスクトップ（1920x1080）で表示する
+  Then 全要素が適切にレイアウトされる
+
+  When スマートフォン（375x667）で表示する
+  Then 全要素が適切にレイアウトされる
+  And タップ可能な要素が十分な大きさである
+  [Requirement: R-007.1, R-007.2, R-007.3]
+```
+
+#### R-011: パフォーマンス要件
+```gherkin
+Scenario: 正誤判定のレスポンスタイム
+  Given ゲーム中にプレイヤーが回答を送信する
+  When WebSocketで正誤判定リクエストが送信される
+  Then 50-100ms以内にレスポンスが返却される
+  [Requirement: R-011.1]
+
+Scenario: ランキング更新の配信時間
+  Given 複数ルームがプレイ中である
+  When あるルームがスコアを更新する
+  Then 全ルームに200ms以内にランキングが配信される
+  [Requirement: R-011.2]
+```
 
 **Critical User Paths**:
 1. **ルーム作成 → プレイヤー参加 → ゲーム開始 → 5回答 → 結果表示**
@@ -1137,8 +1268,17 @@ interface StructuredLog {
 4. **管理画面: 問題作成 → S3保存 → 問題一覧表示 → 問題編集 → 問題削除**
 5. **レスポンシブデザイン: PC・タブレット・スマホでの表示確認**
 
-**テストフレームワーク**:
-- Playwright（将来追加予定）
+**Requirements Traceability Matrix**:
+| 要件ID | テストシナリオ | テストファイル（予定） |
+|--------|---------------|----------------------|
+| R-001.1-1.7 | ルーム作成・参加・退出 | `e2e/room-management.spec.ts` |
+| R-002.1-2.16 | ゲームプレイフロー | `e2e/game-play.spec.ts` |
+| R-003.1-3.5 | スコアリング | `e2e/scoring.spec.ts` |
+| R-004.1-4.4 | ランキング更新 | `e2e/ranking.spec.ts` |
+| R-005.1-5.7 | 問題管理 | `e2e/question-management.spec.ts` |
+| R-006.1-6.6 | 正誤判定・表記ゆれ | `e2e/answer-validation.spec.ts` |
+| R-007.1-7.5 | レスポンシブUI | `e2e/responsive-design.spec.ts` |
+| R-011.1-11.5 | パフォーマンス | `e2e/performance.spec.ts` |
 
 ### Performance Tests
 

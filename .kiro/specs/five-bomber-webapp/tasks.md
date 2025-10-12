@@ -22,7 +22,7 @@
     ```
   - _Requirements: R-008.1 (技術スタック: React 19, TypeScript, Vite)_
 
-- [ ] 1.2 バックエンドプロジェクトの初期化
+- [x] 1.2 バックエンドプロジェクトの初期化
   - Node.js 22.x + TypeScriptプロジェクトを作成
   - Lambda関数の基本構造を設定（handlers/services/repositories構造）
   - AWS SDK v3とDynamoDB DocumentClientを導入

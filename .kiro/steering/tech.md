@@ -90,6 +90,10 @@
 
 ## Infrastructure as Code (IaC)
 
+**Note: インフラコードは別リポジトリで管理します**
+- **Repository**: `hima-five-bomber-infrastructure`
+- **理由**: アプリケーションコードとインフラコードのライフサイクルを分離し、デプロイ戦略を柔軟に管理
+
 ### Terraform
 - **バージョン**: Terraform 1.x
 - **言語**: HCL (HashiCorp Configuration Language)
@@ -103,7 +107,7 @@
 
 ### Terraform構成（予定）
 ```
-terraform/
+hima-five-bomber-infrastructure/
   ├── modules/
   │   ├── frontend/        # S3 + CloudFront
   │   ├── backend/         # Lambda + API Gateway
@@ -123,11 +127,19 @@ terraform/
 ## CI/CD
 
 ### GitHub Actions
+
+#### アプリケーションリポジトリ (`hima-five-bomber`)
 - **Workflow** (prd環境):
   1. **Lint & Test**: ESLint + テスト実行
   2. **Build**: フロントエンド・バックエンドビルド
-  3. **Terraform Deploy**: AWSリソースデプロイ (手動承認)
+  3. **Deploy Application**: ビルド成果物をS3/Lambdaにデプロイ
   4. **E2E Test**: デプロイ後の統合テスト（将来追加）
+
+#### インフラリポジトリ (`hima-five-bomber-infrastructure`)
+- **Workflow** (prd環境):
+  1. **Terraform Validate**: HCL構文チェック
+  2. **Terraform Plan**: 変更差分レビュー
+  3. **Terraform Apply**: AWSリソースデプロイ (手動承認)
 
 ### Deployment Strategy
 - **初期構成**: `prd`（本番環境）のみ
@@ -135,6 +147,7 @@ terraform/
 - **Terraformワークスペース**: 環境ごとのstate管理
 - **State Backend**: S3 + DynamoDB (state locking)
 - **デプロイトリガー**: 手動承認 + タグトリガー
+- **リポジトリ分離**: インフラとアプリケーションのデプロイを独立管理
 
 ## Development Environment
 
@@ -146,6 +159,8 @@ terraform/
 - **Git**: バージョン管理
 
 ### Setup Commands（予定）
+
+#### アプリケーションリポジトリ (`hima-five-bomber`)
 ```bash
 # フロントエンドセットアップ
 cd frontend
@@ -156,9 +171,12 @@ npm run dev
 cd backend
 npm install
 npm run build
+```
 
+#### インフラリポジトリ (`hima-five-bomber-infrastructure`)
+```bash
 # Terraformセットアップ
-cd terraform
+cd hima-five-bomber-infrastructure
 terraform init
 terraform plan
 terraform apply

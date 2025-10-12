@@ -11,10 +11,12 @@ hima-five-bomber/
 │   └── steering/          # プロジェクト全体のガイドライン
 ├── frontend/              # Reactフロントエンド
 ├── backend/               # Lambda関数群
-├── terraform/             # Terraform (IaC)
 ├── shared/                # 共通型定義・ユーティリティ
 ├── .github/               # GitHub Actions CI/CD
 └── CLAUDE.md              # Claude Codeプロジェクト設定
+
+# Note: インフラコード(Terraform)は別リポジトリで管理
+# Repository: hima-five-bomber-infrastructure
 ```
 
 ## Subdirectory Structures
@@ -109,10 +111,14 @@ backend/
 └── tsconfig.json
 ```
 
-### Terraform (`terraform/`)
+### Infrastructure (別リポジトリ: `hima-five-bomber-infrastructure`)
+
+**Note: インフラコード(Terraform)は別リポジトリで管理します**
+- Repository: `hima-five-bomber-infrastructure`
+- 理由: アプリケーションコードとインフラコードのライフサイクルを分離し、デプロイ戦略を柔軟に管理するため
 
 ```
-terraform/
+hima-five-bomber-infrastructure/
 ├── modules/
 │   ├── frontend/        # S3 + CloudFront
 │   │   ├── main.tf
@@ -160,9 +166,11 @@ shared/
 ```
 .github/
 └── workflows/
-    ├── ci.yml          # Lint + Test
-    └── deploy-prd.yml  # 本番環境デプロイ
-    # 将来追加予定: deploy-dev.yml, deploy-stg.yml
+    ├── ci.yml          # Lint + Test (アプリケーションコード)
+    └── deploy-app-prd.yml  # アプリケーション本番環境デプロイ
+    # 将来追加予定: deploy-app-dev.yml, deploy-app-stg.yml
+
+# Note: インフラデプロイワークフローは別リポジトリ(hima-five-bomber-infrastructure)で管理
 ```
 
 ## Code Organization Patterns
@@ -231,7 +239,7 @@ export class GameService {
 ### General Rules
 - **PascalCase**: Reactコンポーネント (`GameBoard.tsx`)
 - **camelCase**: 関数・変数・一般TypeScriptファイル (`gameService.ts`)
-- **kebab-case**: CDKスタック (`frontend-stack.ts`)
+- **kebab-case**: Terraformモジュール名 (`frontend-module/`)
 - **UPPER_SNAKE_CASE**: 環境変数・定数
 
 ### Specific Patterns
