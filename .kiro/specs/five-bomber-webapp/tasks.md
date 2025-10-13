@@ -50,7 +50,7 @@
     ```
   - _Requirements: R-008.2 (技術スタック: Node.js 22.x, AWS Lambda)_
 
-- [ ] 1.3 共通型定義とユーティリティの作成
+- [x] 1.3 共通型定義とユーティリティの作成
   - shared/types/配下に共通型定義を作成（Room, Player, GameSession, Question等）
   - ゲームルール定数（制限時間30秒、正解スコア10点等）を定義
   - スコアリング定数を定義
