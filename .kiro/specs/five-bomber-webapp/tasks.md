@@ -65,12 +65,20 @@
   - _Requirements: R-003.1 (正解1つにつき10点), R-003.2 (時間ボーナス1秒1点)_
 
 - [ ] 1.4 AWSデプロイと動作確認（タスク1完了後）
+  - **事前条件（IaCリポジトリで完了必須）**:
+    - ✅ タスク6.1: フロントエンド用S3バケットの作成
+    - ✅ タスク6.2: CloudFront OAC/OAIの設定
+    - ✅ タスク6.3: CloudFrontディストリビューションの基本設定
+    - ✅ タスク6.4: CloudFront SPAルーティング対応
+    - ✅ タスク6.7: フロントエンドモジュールの出力値定義
+    - ⚠️ タスク3.5（推奨）: フロントエンドデプロイ用IAMロール（GitHub Actions使用時）
   - IaCリポジトリでS3 + CloudFront（フロントエンド静的ホスティング）をデプロイ
   - フロントエンドをビルドしてS3にアップロード
   - CloudFront URLでフロントエンドが表示されることを確認
   - **Acceptance Criteria**:
     ```gherkin
     Given IaCでS3 + CloudFrontがデプロイされている
+    And terraform output でS3バケット名とCloudFrontドメインが取得できる
     When フロントエンドをビルドしてS3にアップロードする
     Then CloudFront URL (https://xxx.cloudfront.net) でアプリが表示される
     And ブラウザのコンソールにエラーがない
