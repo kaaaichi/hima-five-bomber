@@ -256,6 +256,16 @@
   - _Requirements: R-001.5, R-007.1_
 
 - [ ] 3.7 AWSデプロイと結合テスト（タスク3完了後）
+  - **事前条件（IaCリポジトリで完了必須）**:
+    - ✅ タスク4.1: DynamoDB Roomsテーブルの作成
+    - ✅ タスク4.2: DynamoDBセキュリティと可用性の設定
+    - ✅ タスク5.1: ECRリポジトリの作成
+    - ✅ タスク5.2: Lambda IAMロールの作成
+    - ✅ タスク5.3: Lambda関数の基本設定
+    - ✅ タスク5.4: REST APIハンドラーLambda関数の定義
+    - ✅ タスク5.7: API Gateway REST APIの作成
+    - ✅ タスク5.9: API Gatewayロギングの設定
+    - ✅ タスク5.10: バックエンドモジュールの出力値定義
   - IaCでDynamoDB Roomsテーブル、API Gateway REST API、Lambda関数をデプロイ
   - バックエンドをビルドしてLambda関数をデプロイ
   - フロントエンドの環境変数にAPI Gateway URLを設定し、再ビルド・デプロイ
@@ -263,6 +273,7 @@
   - **Acceptance Criteria**:
     ```gherkin
     Given IaCでDynamoDB、API Gateway、Lambdaがデプロイされている
+    And terraform output でREST API URLとテーブル名が取得できる
     When CloudFront URLでアプリを開く
     Then ルーム作成画面が表示される
     And ルーム作成ボタンをクリックするとAWS API Gatewayが呼ばれる
@@ -667,6 +678,12 @@
   - _Requirements: R-002.13, R-002.14_
 
 - [ ] 8.5 AWSデプロイと結合テスト（タスク4-8完了後）
+  - **事前条件（IaCリポジトリで完了必須）**:
+    - ✅ タスク4.1: DynamoDB GameSessions/Scores/Connectionsテーブルの作成
+    - ✅ タスク4.4-4.5: S3問題バケットの作成と出力値定義
+    - ✅ タスク5.5: WebSocket APIハンドラーLambda関数の定義
+    - ✅ タスク5.8: API Gateway WebSocket APIの作成
+    - ✅ タスク5.10: バックエンドモジュールの出力値定義（WebSocket URL含む）
   - IaCでAPI Gateway WebSocket API、DynamoDB GameSessions/Scores/Connectionsテーブル、S3問題バケットをデプロイ
   - WebSocket Lambda関数群（接続、切断、submitAnswer、ブロードキャスト）をデプロイ
   - フロントエンドの環境変数にWebSocket URLを設定し、再ビルド・デプロイ
@@ -674,6 +691,7 @@
   - **Acceptance Criteria**:
     ```gherkin
     Given IaCでWebSocket API、DynamoDB、S3がデプロイされている
+    And terraform output でWebSocket URLとテーブル名が取得できる
     When CloudFront URLでゲームを開始する
     Then WebSocket接続が確立される
     And 5人のプレイヤーが順番に回答できる
@@ -762,6 +780,11 @@
   - _Requirements: R-005.7, R-007.1_
 
 - [ ] 9.5 AWSデプロイと結合テスト（タスク9完了後）
+  - **事前条件（IaCリポジトリで完了必須）**:
+    - ✅ タスク4.1: DynamoDB Questionsテーブルの作成
+    - ✅ タスク4.4-4.5: S3問題バケットの作成と出力値定義
+    - ✅ タスク5.4: REST APIハンドラーLambda（questions-handler）の定義
+    - ✅ タスク5.7: API Gateway REST API（/questions エンドポイント）の作成
   - 問題管理用のREST API Lambda関数をデプロイ
   - S3バケットに初期問題データ（JSON）をアップロード
   - AWS上で問題管理機能をテスト（問題作成・取得・更新・削除・フィルタリング）
@@ -769,6 +792,7 @@
   - **Acceptance Criteria**:
     ```gherkin
     Given IaCで問題管理用Lambda、S3バケットがデプロイされている
+    And terraform output でS3バケット名とAPI URLが取得できる
     When CloudFront URLで問題管理画面を開く
     Then 問題一覧が表示される
     And 問題作成・編集・削除が正常に動作する
@@ -947,6 +971,12 @@
   - _Requirements: R-010.6_
 
 - [ ] 11.6 AWSデプロイと結合テスト（タスク10-11完了後）
+  - **事前条件（IaCリポジトリで完了必須）**:
+    - ✅ タスク4.2: DynamoDBセキュリティと可用性の設定（暗号化、PITR）
+    - ✅ タスク5.7: API Gatewayスロットリング設定
+    - ✅ タスク6.3: CloudFront HTTPS強制設定
+    - ✅ タスク6.5-6.6: AWS WAF IP制限機能（オプション）
+    - ✅ タスク7.1-7.3: CloudWatchモニタリング設定（LogGroup、Alarms、SNS）
   - レスポンシブデザインとセキュリティ設定を反映してフロントエンドを再ビルド・デプロイ
   - API Gatewayのスロットリング、DynamoDB暗号化、CloudFront HTTPS強制を設定
   - CloudWatch Logs/Metricsの監視設定を確認
