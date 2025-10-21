@@ -174,13 +174,10 @@ describe('POST /api/rooms - Integration Tests', () => {
       // Assert
       expect(result.statusCode).toBe(400);
       const responseBody = JSON.parse(result.body);
-      expect(responseBody.error).toMatchObject({
-        code: 'VALIDATION_ERROR',
-        message: 'Invalid request parameters',
-        details: {
-          hostName: 'Host name is required and cannot be empty',
-        },
-      });
+      expect(responseBody.error.code).toBe('VALIDATION_ERROR');
+      expect(responseBody.error.message).toBe('Invalid request parameters');
+      expect(responseBody.error.details).toHaveProperty('hostName');
+      expect(responseBody.error.details.hostName).toContain('Host name');
 
       // DynamoDBが呼ばれていないことを確認
       expect(ddbMock.commandCalls(PutCommand)).toHaveLength(0);
@@ -294,7 +291,7 @@ describe('POST /api/rooms - Integration Tests', () => {
     test('Given complete valid request WHEN POST /api/rooms is called THEN entire flow from API to DynamoDB succeeds', async () => {
       // Arrange
       const requestBody = {
-        hostName: 'Complete Flow Test Host',
+        hostName: 'Complete Flow Host',
       };
 
       const event: APIGatewayProxyEvent = {
@@ -338,7 +335,7 @@ describe('POST /api/rooms - Integration Tests', () => {
         players: [
           {
             playerId: hostId,
-            name: 'Complete Flow Test Host',
+            name: 'Complete Flow Host',
             joinedAt: expect.any(Number),
           },
         ],

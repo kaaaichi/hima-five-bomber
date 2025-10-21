@@ -6,13 +6,7 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { RoomService } from '../../services/RoomService';
 import { RoomRepository } from '../../repositories/RoomRepository';
-
-/**
- * POST /api/rooms Request Body
- */
-interface CreateRoomRequest {
-  hostName: string;
-}
+import { validateCreateRoomRequest, CreateRoomRequest } from '@five-bomber/shared';
 
 /**
  * POST /api/rooms Response Body
@@ -56,10 +50,29 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
       };
     }
 
-    const request: CreateRoomRequest = JSON.parse(event.body);
+    // リクエストボディをパース
+    let requestBody: unknown;
+    try {
+      requestBody = JSON.parse(event.body);
+    } catch (error) {
+      return {
+        statusCode: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+        },
+        body: JSON.stringify({
+          error: {
+            code: 'INVALID_JSON',
+            message: 'Request body must be valid JSON',
+          },
+        } as ErrorResponse),
+      };
+    }
 
-    // バリデーション
-    if (!request.hostName || request.hostName.trim().length === 0) {
+    // Zodによるバリデーション
+    const validation = validateCreateRoomRequest(requestBody);
+    if (!validation.success) {
       return {
         statusCode: 400,
         headers: {
@@ -70,13 +83,16 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
           error: {
             code: 'VALIDATION_ERROR',
             message: 'Invalid request parameters',
-            details: {
-              hostName: 'Host name is required and cannot be empty',
-            },
+            details: validation.errors.reduce(
+              (acc, err) => ({ ...acc, [err.field]: err.message }),
+              {}
+            ),
           },
         } as ErrorResponse),
       };
     }
+
+    const request = validation.data;
 
     // サービス初期化
     const tableName = process.env.DYNAMODB_ROOMS_TABLE || 'five-bomber-rooms';

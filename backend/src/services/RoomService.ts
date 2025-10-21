@@ -3,7 +3,7 @@
  * ルーム管理のビジネスロジック
  */
 
-import { Room, Player } from '@five-bomber/shared/types/models';
+import { Room, Player, validateHostName } from '@five-bomber/shared';
 import { RoomRepository } from '../repositories/RoomRepository';
 import { Result, ServiceError } from '../types/common';
 import { randomBytes } from 'crypto';
@@ -16,17 +16,20 @@ export class RoomService {
    * @param hostName ホストのプレイヤー名
    * @returns 作成されたルーム情報
    */
-  async createRoom(hostName: string): Promise<Result<Room, ServiceError>> {
-    // バリデーション
-    if (!hostName || hostName.trim().length === 0) {
+  async createRoom(hostName: unknown): Promise<Result<Room, ServiceError>> {
+    // Zodによるバリデーション
+    const validation = validateHostName(hostName);
+    if (!validation.success) {
       return {
         success: false,
         error: {
           type: 'ValidationError',
-          message: 'Host name is required and cannot be empty',
+          message: validation.errors.map((e) => e.message).join(', '),
         },
       };
     }
+
+    const validatedHostName = validation.data;
 
     // ユニークなルームIDを生成（6文字の小文字英数字）
     const roomId = this.generateRoomId();
@@ -37,7 +40,7 @@ export class RoomService {
     // ホストプレイヤーを作成
     const hostPlayer: Player = {
       playerId,
-      name: hostName,
+      name: validatedHostName,
       joinedAt: Date.now(),
     };
 
