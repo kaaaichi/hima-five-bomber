@@ -21,6 +21,28 @@ Kiro-style Spec Driven Development implementation using claude code slash comman
 ## Development Guidelines
 - Think in English, but generate responses in Japanese (思考は英語、回答の生成は日本語で行うように)
 
+### Error Resolution Strategy
+エラーが発生した場合、以下の段階的アプローチで解決する：
+
+1. **初回試行**: エラーメッセージから原因を推測して修正を試みる
+2. **2回目の試行**: 別のアプローチで修正を試みる
+3. **3回目以降（デバッグモード）**:
+   - 対象箇所にdebug用の標準出力（`console.log`等）を追加
+   - 実際の値や実行フローを確認してデバッグ
+   - 原因を特定して修正
+   - **重要**: デバッグ用の標準出力を削除してクリーンな状態に戻す
+
+### Git Workflow (個人開発)
+- **mainブランチへの直接push禁止**: 必ずfeatureブランチを作成してPR経由でマージ
+- **レビュワー**: 人間（開発者）がレビューを実施。PRはレビュー承認後にマージ
+- **ブランチ命名規則**: IaCリポジトリ（hima-five-bomber-infrastructure）と統一
+  - `feature/task-X.X-description`: タスクベースの機能実装（例: `feature/task-3.1-room-creation`）
+  - `feature/description`: 汎用的な機能追加（例: `feature/add-eslint-config`）
+  - `fix/issue-name`: バグ修正（例: `fix/websocket-reconnection`）
+  - `docs/description`: ドキュメント更新（例: `docs/update-readme`）
+- **PRマージ後**: featureブランチは削除可能
+- **AI's Role**: PRを作成するところまで。マージは人間のレビュー承認後に実施
+
 ## Workflow
 
 ### Phase 0: Steering (Optional)
