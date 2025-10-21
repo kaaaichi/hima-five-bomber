@@ -5,7 +5,7 @@
 
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, PutCommand, GetCommand, UpdateCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
-import { Room, Player } from '@five-bomber/shared/types/models';
+import { Room, Player } from '../types-shared/models';
 import { Result, RepositoryError } from '../types/common';
 
 /**

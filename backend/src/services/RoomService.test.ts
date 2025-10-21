@@ -5,7 +5,7 @@
 
 import { RoomService } from './RoomService';
 import { RoomRepository } from '../repositories/RoomRepository';
-import { Room, Player } from '@five-bomber/shared/types/models';
+import { Room, Player } from '../types-shared/models';
 
 // モックリポジトリ
 jest.mock('../repositories/RoomRepository');

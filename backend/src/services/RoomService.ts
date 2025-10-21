@@ -3,7 +3,8 @@
  * ルーム管理のビジネスロジック
  */
 
-import { Room, Player, validateHostName } from '@five-bomber/shared';
+import { Room, Player } from '../types-shared/models';
+import { validateHostName } from '../types-shared/schemas';
 import { RoomRepository } from '../repositories/RoomRepository';
 import { Result, ServiceError } from '../types/common';
 import { randomBytes } from 'crypto';

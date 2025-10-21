@@ -6,7 +6,7 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { RoomService } from '../../services/RoomService';
 import { RoomRepository } from '../../repositories/RoomRepository';
-import { validateCreateRoomRequest, CreateRoomRequest } from '@five-bomber/shared';
+import { validateCreateRoomRequest, CreateRoomRequest } from '../../types-shared/schemas';
 
 /**
  * POST /api/rooms Response Body

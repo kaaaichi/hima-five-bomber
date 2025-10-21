@@ -6,27 +6,15 @@ FROM public.ecr.aws/lambda/nodejs:22 AS builder
 
 WORKDIR /app
 
-# Copy shared package first (dependency)
-COPY shared/package*.json ./shared/
-COPY shared/tsconfig.json ./shared/
-COPY shared/index.ts ./shared/
-COPY shared/types ./shared/types
-
-# Build shared package
-WORKDIR /app/shared
-RUN npm ci && npm run build
-
-# Copy backend package files
-WORKDIR /app/backend
-COPY backend/package*.json ./
-COPY backend/tsconfig.json ./
+# Copy package files
+COPY package*.json ./
+COPY tsconfig.json ./
 
 # Install dependencies (including dev dependencies for build)
-# This will use the local shared package from ../shared
 RUN npm ci
 
-# Copy backend source code
-COPY backend/src ./src
+# Copy source code
+COPY src ./src
 
 # Build TypeScript
 RUN npm run build
@@ -36,19 +24,14 @@ FROM public.ecr.aws/lambda/nodejs:22
 
 WORKDIR ${LAMBDA_TASK_ROOT}
 
-# Copy shared package (built)
-COPY --from=builder /app/shared/package*.json ./shared/
-COPY --from=builder /app/shared/dist ./shared/dist
-
-# Copy backend package files
-COPY --from=builder /app/backend/package*.json ./
+# Copy package files
+COPY package*.json ./
 
 # Install production dependencies only
-# This will reference the local shared package
 RUN npm ci --omit=dev
 
-# Copy compiled backend code from builder
-COPY --from=builder /app/backend/dist ./dist
+# Copy compiled code from builder
+COPY --from=builder /app/dist ./dist
 
 # Copy any additional runtime files if needed
 # COPY src/config ./config

@@ -6,7 +6,7 @@
 import { mockClient } from 'aws-sdk-client-mock';
 import { DynamoDBDocumentClient, PutCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
 import { RoomRepository } from './RoomRepository';
-import { Room, Player } from '@five-bomber/shared/types/models';
+import { Room, Player } from '../types-shared/models';
 
 const ddbMock = mockClient(DynamoDBDocumentClient);
 
