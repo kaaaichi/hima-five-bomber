@@ -64,7 +64,7 @@
     ```
   - _Requirements: R-003.1 (正解1つにつき10点), R-003.2 (時間ボーナス1秒1点)_
 
-- [ ] 1.4 AWSデプロイと動作確認（タスク1完了後）
+- [x] 1.4 AWSデプロイと動作確認（タスク1完了後）
   - **事前条件（IaCリポジトリで完了必須）**:
     - ✅ タスク6.1: フロントエンド用S3バケットの作成
     - ✅ タスク6.2: CloudFront OAC/OAIの設定
@@ -80,7 +80,7 @@
     Given IaCでS3 + CloudFrontがデプロイされている
     And terraform output でS3バケット名とCloudFrontドメインが取得できる
     When フロントエンドをビルドしてS3にアップロードする
-    Then CloudFront URL (https://xxx.cloudfront.net) でアプリが表示される
+    Then CloudFront URL (https://d3j6o2ajbykkme.cloudfront.net) でアプリが表示される
     And ブラウザのコンソールにエラーがない
     ```
   - _Requirements: R-008.3 (S3静的ホスティング), R-008.4 (CloudFront)_
@@ -89,7 +89,7 @@
 
 ## 2. CI/CDパイプラインの構築
 
-- [ ] 2.1 GitHub Actions ワークフロー（Lint & Test）
+- [x] 2.1 GitHub Actions ワークフロー（Lint & Test）
   - CI用のGitHub Actionsワークフローファイルを作成
   - フロントエンドのLint + Testジョブを実装
   - バックエンドのLint + Testジョブを実装
@@ -104,7 +104,7 @@
     ```
   - _Requirements: R-009.1, R-009.2_
 
-- [ ] 2.2 GitHub Actions ワークフロー（Build）
+- [x] 2.2 GitHub Actions ワークフロー（Build）
   - フロントエンドのビルドジョブを実装
   - バックエンドのビルドジョブ（Dockerイメージビルド）を実装
   - ビルド成果物のアーティファクト保存を実装
@@ -119,7 +119,7 @@
     ```
   - _Requirements: R-009.3_
 
-- [ ] 2.3 GitHub Actions ワークフロー（Deploy Application）
+- [x] 2.3 GitHub Actions ワークフロー（Deploy Application）
   - S3へのフロントエンドデプロイジョブを実装
   - ECR + Lambda関数へのバックエンドデプロイジョブを実装
   - CloudFrontキャッシュ無効化を実装
@@ -135,7 +135,7 @@
     ```
   - _Requirements: R-009.4, R-009.5_
 
-- [ ] 2.4 デプロイトリガーと承認フロー
+- [x] 2.4 デプロイトリガーと承認フロー
   - mainブランチへのマージ時の自動デプロイトリガーを設定
   - タグトリガー（v1.0.0等）によるリリースデプロイを設定
   - 手動承認ステップの実装（本番デプロイ前）
