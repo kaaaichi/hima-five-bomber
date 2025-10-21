@@ -89,6 +89,10 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     if (!result.success) {
       // エラーレスポンス
       const statusCode = result.error.type === 'ValidationError' ? 400 : 500;
+
+      // エラーコードをスネークケースの大文字に変換 (例: DatabaseError -> DATABASE_ERROR)
+      const errorCode = result.error.type.replace(/([A-Z])/g, '_$1').toUpperCase().substring(1);
+
       return {
         statusCode,
         headers: {
@@ -97,7 +101,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
         },
         body: JSON.stringify({
           error: {
-            code: result.error.type.toUpperCase(),
+            code: errorCode,
             message: result.error.message,
           },
         } as ErrorResponse),
