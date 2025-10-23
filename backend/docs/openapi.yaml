@@ -1,0 +1,766 @@
+openapi: 3.0.3
+info:
+  title: Five Bomber Web App API
+  description: |
+    ファイブボンバーWebアプリケーションのREST APIおよびWebSocket API仕様書。
+
+    ## 概要
+    本APIは、ネプリーグの人気クイズゲーム「ファイブボンバー」をWeb上で再現する
+    リアルタイム対戦クイズアプリケーションのバックエンドAPIです。
+
+    ## 認証
+    初期フェーズでは認証機能は実装していません。
+    将来的にAWS Cognitoを使用したユーザー認証を追加予定です。
+
+    ## アーキテクチャ
+    - **REST API**: AWS API Gateway + Lambda (Node.js 22.x)
+    - **WebSocket API**: AWS API Gateway WebSocket + Lambda
+    - **データベース**: Amazon DynamoDB
+    - **ストレージ**: Amazon S3
+  version: 1.0.0
+  contact:
+    name: Five Bomber Development Team
+  license:
+    name: Private
+
+servers:
+  - url: https://api.five-bomber.example.com/v1
+    description: 本番環境 (PRD)
+  - url: https://api-dev.five-bomber.example.com/v1
+    description: 開発環境 (DEV)
+
+tags:
+  - name: Rooms
+    description: ルーム管理API
+  - name: Players
+    description: プレイヤー管理API
+  - name: Questions
+    description: 問題管理API
+  - name: Game
+    description: ゲームプレイAPI
+
+paths:
+  /rooms:
+    post:
+      tags:
+        - Rooms
+      summary: ルームを作成
+      description: |
+        新しいゲームルームを作成します。
+        ホストプレイヤーとしてルームに自動的に参加します。
+      operationId: createRoom
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - hostName
+              properties:
+                hostName:
+                  type: string
+                  minLength: 1
+                  maxLength: 20
+                  description: ホストプレイヤーの名前
+                  example: "田中太郎"
+            examples:
+              example1:
+                summary: 有効なリクエスト
+                value:
+                  hostName: "田中太郎"
+              example2:
+                summary: 英語の名前
+                value:
+                  hostName: "John Doe"
+      responses:
+        '200':
+          description: ルームが正常に作成されました
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - roomId
+                  - hostId
+                properties:
+                  roomId:
+                    type: string
+                    pattern: '^[a-z0-9]{6}$'
+                    description: 生成されたルームID（6文字の小文字英数字）
+                    example: "abc123"
+                  hostId:
+                    type: string
+                    pattern: '^player-[a-f0-9]{32}$'
+                    description: ホストプレイヤーのID
+                    example: "player-1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p"
+              examples:
+                example1:
+                  summary: 成功レスポンス
+                  value:
+                    roomId: "abc123"
+                    hostId: "player-1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p"
+        '400':
+          description: バリデーションエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                missingBody:
+                  summary: リクエストボディが欠如
+                  value:
+                    error:
+                      code: "MISSING_BODY"
+                      message: "Request body is required"
+                validationError:
+                  summary: ホスト名が空
+                  value:
+                    error:
+                      code: "VALIDATION_ERROR"
+                      message: "Invalid request parameters"
+                      details:
+                        hostName: "Host name is required and cannot be empty"
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                databaseError:
+                  summary: データベースエラー
+                  value:
+                    error:
+                      code: "DATABASE_ERROR"
+                      message: "DynamoDB connection timeout"
+
+  /rooms/{roomId}:
+    get:
+      tags:
+        - Rooms
+      summary: ルーム情報を取得
+      description: ルームIDを指定してルーム情報を取得します
+      operationId: getRoom
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          description: ルームID
+          schema:
+            type: string
+            pattern: '^[a-z0-9]{6}$'
+          example: "abc123"
+      responses:
+        '200':
+          description: ルーム情報
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Room'
+        '404':
+          description: ルームが見つかりません
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notFound:
+                  summary: ルームが存在しない
+                  value:
+                    error:
+                      code: "NOT_FOUND"
+                      message: "Room not found"
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /rooms/{roomId}/join:
+    post:
+      tags:
+        - Rooms
+      summary: ルームに参加
+      description: |
+        既存のルームにプレイヤーとして参加します。
+        ルームが満員（5人）の場合はエラーを返します。
+      operationId: joinRoom
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          description: 参加するルームID
+          schema:
+            type: string
+            pattern: '^[a-z0-9]{6}$'
+          example: "abc123"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - playerName
+              properties:
+                playerName:
+                  type: string
+                  minLength: 1
+                  maxLength: 20
+                  description: プレイヤー名
+                  example: "佐藤花子"
+      responses:
+        '200':
+          description: ルームに参加しました
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - playerId
+                properties:
+                  playerId:
+                    type: string
+                    pattern: '^player-[a-f0-9]{32}$'
+                    description: 生成されたプレイヤーID
+                    example: "player-2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q"
+        '400':
+          description: バリデーションエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: ルームが見つかりません
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: ルームが満員です
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                roomFull:
+                  summary: ルーム満員
+                  value:
+                    error:
+                      code: "ROOM_FULL"
+                      message: "This room is already full (5 players maximum)"
+                      details:
+                        currentPlayers: 5
+                        maxPlayers: 5
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /rooms/{roomId}/players/{playerId}:
+    delete:
+      tags:
+        - Rooms
+      summary: ルームから退出
+      description: |
+        ルームからプレイヤーを削除します。
+        ホストが退出した場合、残りのプレイヤーから新しいホストが選ばれます。
+      operationId: leaveRoom
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          description: ルームID
+          schema:
+            type: string
+            pattern: '^[a-z0-9]{6}$'
+          example: "abc123"
+        - name: playerId
+          in: path
+          required: true
+          description: プレイヤーID
+          schema:
+            type: string
+            pattern: '^player-[a-f0-9]{32}$'
+          example: "player-1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p"
+      responses:
+        '200':
+          description: ルームから退出しました
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        '404':
+          description: ルームまたはプレイヤーが見つかりません
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /questions:
+    get:
+      tags:
+        - Questions
+      summary: 問題一覧を取得
+      description: |
+        問題の一覧を取得します。
+        カテゴリや難易度でフィルタリング可能です。
+      operationId: listQuestions
+      parameters:
+        - name: category
+          in: query
+          description: カテゴリでフィルタリング
+          schema:
+            type: string
+            enum: [geography, history, science, entertainment]
+          example: "geography"
+        - name: difficulty
+          in: query
+          description: 難易度でフィルタリング
+          schema:
+            type: string
+            enum: [easy, medium, hard]
+          example: "easy"
+      responses:
+        '200':
+          description: 問題一覧
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/QuestionMetadata'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags:
+        - Questions
+      summary: 問題を作成
+      description: |
+        新しい問題を作成します。
+        管理者権限が必要です（将来実装予定）。
+      operationId: createQuestion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuestionInput'
+      responses:
+        '200':
+          description: 問題が作成されました
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - questionId
+                properties:
+                  questionId:
+                    type: string
+                    example: "question-001"
+        '400':
+          description: バリデーションエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /questions/{questionId}:
+    get:
+      tags:
+        - Questions
+      summary: 問題を取得
+      description: |
+        問題IDを指定して問題を取得します。
+        **注意**: 正解データは含まれません（セキュリティ対策）。
+      operationId: getQuestion
+      parameters:
+        - name: questionId
+          in: path
+          required: true
+          description: 問題ID
+          schema:
+            type: string
+          example: "question-001"
+      responses:
+        '200':
+          description: 問題データ（正解なし）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionWithoutAnswers'
+        '404':
+          description: 問題が見つかりません
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags:
+        - Questions
+      summary: 問題を更新
+      description: 問題を更新します（管理者権限が必要）
+      operationId: updateQuestion
+      parameters:
+        - name: questionId
+          in: path
+          required: true
+          description: 問題ID
+          schema:
+            type: string
+          example: "question-001"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuestionInput'
+      responses:
+        '200':
+          description: 問題が更新されました
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Question'
+        '400':
+          description: バリデーションエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 問題が見つかりません
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - Questions
+      summary: 問題を削除
+      description: 問題を削除します（管理者権限が必要）
+      operationId: deleteQuestion
+      parameters:
+        - name: questionId
+          in: path
+          required: true
+          description: 問題ID
+          schema:
+            type: string
+          example: "question-001"
+      responses:
+        '200':
+          description: 問題が削除されました
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        '404':
+          description: 問題が見つかりません
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    Room:
+      type: object
+      required:
+        - roomId
+        - hostId
+        - players
+        - status
+        - createdAt
+      properties:
+        roomId:
+          type: string
+          pattern: '^[a-z0-9]{6}$'
+          description: ルームID
+          example: "abc123"
+        hostId:
+          type: string
+          pattern: '^player-[a-f0-9]{32}$'
+          description: ホストプレイヤーID
+          example: "player-1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p"
+        players:
+          type: array
+          minItems: 1
+          maxItems: 5
+          items:
+            $ref: '#/components/schemas/Player'
+          description: プレイヤーリスト（最大5人）
+        status:
+          type: string
+          enum: [waiting, playing, finished]
+          description: ルームのステータス
+          example: "waiting"
+        createdAt:
+          type: integer
+          format: int64
+          description: ルーム作成日時（Unixタイムスタンプ）
+          example: 1234567890000
+
+    Player:
+      type: object
+      required:
+        - playerId
+        - name
+        - joinedAt
+      properties:
+        playerId:
+          type: string
+          pattern: '^player-[a-f0-9]{32}$'
+          description: プレイヤーID
+          example: "player-1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p"
+        name:
+          type: string
+          minLength: 1
+          maxLength: 20
+          description: プレイヤー名
+          example: "田中太郎"
+        joinedAt:
+          type: integer
+          format: int64
+          description: 参加日時（Unixタイムスタンプ）
+          example: 1234567890000
+
+    Question:
+      type: object
+      required:
+        - id
+        - question
+        - answers
+        - acceptableVariations
+        - category
+        - difficulty
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          description: 問題ID
+          example: "question-001"
+        question:
+          type: string
+          description: 問題文
+          example: "日本の首都は？"
+        answers:
+          type: array
+          minItems: 5
+          items:
+            type: string
+          description: 正解リスト（5つ以上）
+          example: ["東京", "Tokyo", "とうきょう", "トウキョウ", "TOKYO"]
+        acceptableVariations:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          description: 許容表記のバリエーション
+          example:
+            "東京": ["とうきょう", "トウキョウ", "Tokyo", "TOKYO"]
+        category:
+          type: string
+          enum: [geography, history, science, entertainment]
+          description: カテゴリ
+          example: "geography"
+        difficulty:
+          type: string
+          enum: [easy, medium, hard]
+          description: 難易度
+          example: "easy"
+        createdAt:
+          type: integer
+          format: int64
+          description: 作成日時（Unixタイムスタンプ）
+          example: 1234567890000
+        updatedAt:
+          type: integer
+          format: int64
+          description: 更新日時（Unixタイムスタンプ）
+          example: 1234567890000
+
+    QuestionWithoutAnswers:
+      type: object
+      required:
+        - id
+        - question
+        - category
+        - difficulty
+      properties:
+        id:
+          type: string
+          description: 問題ID
+          example: "question-001"
+        question:
+          type: string
+          description: 問題文
+          example: "日本の首都は？"
+        category:
+          type: string
+          enum: [geography, history, science, entertainment]
+          description: カテゴリ
+          example: "geography"
+        difficulty:
+          type: string
+          enum: [easy, medium, hard]
+          description: 難易度
+          example: "easy"
+
+    QuestionMetadata:
+      type: object
+      required:
+        - id
+        - question
+        - category
+        - difficulty
+      properties:
+        id:
+          type: string
+          description: 問題ID
+          example: "question-001"
+        question:
+          type: string
+          description: 問題文
+          example: "日本の首都は？"
+        category:
+          type: string
+          enum: [geography, history, science, entertainment]
+          description: カテゴリ
+          example: "geography"
+        difficulty:
+          type: string
+          enum: [easy, medium, hard]
+          description: 難易度
+          example: "easy"
+
+    QuestionInput:
+      type: object
+      required:
+        - question
+        - answers
+        - acceptableVariations
+        - category
+        - difficulty
+      properties:
+        question:
+          type: string
+          description: 問題文
+          example: "日本の首都は？"
+        answers:
+          type: array
+          minItems: 5
+          items:
+            type: string
+          description: 正解リスト（5つ以上必須）
+          example: ["東京", "Tokyo", "とうきょう", "トウキョウ", "TOKYO"]
+        acceptableVariations:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          description: 許容表記のバリエーション
+          example:
+            "東京": ["とうきょう", "トウキョウ", "Tokyo", "TOKYO"]
+        category:
+          type: string
+          enum: [geography, history, science, entertainment]
+          description: カテゴリ
+          example: "geography"
+        difficulty:
+          type: string
+          enum: [easy, medium, hard]
+          description: 難易度
+          example: "easy"
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+              description: エラーコード
+              example: "VALIDATION_ERROR"
+            message:
+              type: string
+              description: エラーメッセージ
+              example: "Invalid request parameters"
+            details:
+              type: object
+              description: エラー詳細（オプション）
+              additionalProperties: true
+              example:
+                hostName: "Host name is required and cannot be empty"
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT認証（将来実装予定）
+
+security: []

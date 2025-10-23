@@ -1,17 +1,31 @@
-/**
- * DynamoDB client utilities
- * Provides configured DynamoDB DocumentClient for use across the application
- */
-
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBClient, DynamoDBClientConfig } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 
-/**
- * Create DynamoDB client with proper configuration
- * Using global scope for Lambda container reuse
- */
-const dynamoDBClient = new DynamoDBClient({
+const clientConfig: DynamoDBClientConfig = {
   region: process.env.AWS_REGION || 'ap-northeast-1',
+};
+
+if (process.env.DYNAMODB_ENDPOINT) {
+  clientConfig.endpoint = process.env.DYNAMODB_ENDPOINT;
+  clientConfig.credentials = {
+    accessKeyId: 'dummy',
+    secretAccessKey: 'dummy',
+  };
+}
+
+console.log('--- DynamoDB Client Init Debug ---');
+console.log('process.env.AWS_REGION:', process.env.AWS_REGION);
+console.log('process.env.DYNAMODB_ENDPOINT:', process.env.DYNAMODB_ENDPOINT);
+console.log('clientConfig.region:', clientConfig.region);
+console.log('clientConfig.endpoint:', clientConfig.endpoint);
+console.log('clientConfig.credentials (if set directly):', clientConfig.credentials);
+
+const dynamoDBClient = new DynamoDBClient(clientConfig);
+
+dynamoDBClient.config.credentials().then(creds => {
+  console.log('Resolved Credentials:', creds);
+}).catch(err => {
+  console.error('Error resolving credentials:', err);
 });
 
 /**

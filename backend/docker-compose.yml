@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  # DynamoDB Local
+  dynamodb-local:
+    image: amazon/dynamodb-local:latest
+    container_name: five-bomber-dynamodb-local
+    ports:
+      - "8000:8000"
+    command: "-jar DynamoDBLocal.jar -sharedDb -dbPath ./data"
+    volumes:
+      - ./dynamodb-data:/home/dynamodblocal/data
+    working_dir: /home/dynamodblocal
+
+  # Lambda Runtime Interface Emulator - POST /api/rooms
+  lambda-rooms-create:
+    build: .
+    container_name: five-bomber-lambda-rooms-create
+    ports:
+      - "9000:8080"
+      - "9229:9229" # デバッグポートを追加
+    environment:
+      - AWS_PROFILE=local-dev
+      - AWS_REGION=ap-northeast-1
+      - DYNAMODB_ROOMS_TABLE=five-bomber-rooms-local
+      - DYNAMODB_ENDPOINT=http://dynamodb-local:8000
+    command: ["node", "--inspect-brk=0.0.0.0:9229", "dist/handlers/rest/rooms.handler"] # デバッグモードで起動
+    volumes:
+      - ~/.aws:/root/.aws:ro
+    depends_on:
+      - dynamodb-local
+
+  # DynamoDB Admin UI
+  dynamodb-admin:
+    image: aaronshaf/dynamodb-admin
+    container_name: five-bomber-dynamodb-admin
+    ports:
+      - "8001:8001" # ホストの8001番ポートでアクセス
+    environment:
+      DYNAMO_ENDPOINT: http://dynamodb-local:8000
+    depends_on:
+      - dynamodb-local
