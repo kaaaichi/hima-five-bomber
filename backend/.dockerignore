@@ -17,7 +17,6 @@
 **/.gitignore
 **/.env
 **/.env.*
-**/tsconfig.json
 
 # Documentation
 **/*.md
