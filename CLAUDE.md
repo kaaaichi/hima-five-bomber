@@ -78,6 +78,8 @@ Managed by `/kiro:steering` command. Updates here reflect command changes.
 - `product.md`: ✅ Always included - Product context and business objectives
 - `tech.md`: ✅ Always included - Technology stack and architectural decisions (ハイブリッドアプローチ: バックエンド判定)
 - `structure.md`: ✅ Always included - File organization and code patterns
+- `coding-style.md`: ✅ Always included - Coding conventions and git command rules
+- `workflow.md`: ✅ Always included - Development workflow and PR process (1タスク=1PR)
 
 ### Custom Steering Files
 <!-- Added by /kiro:steering-custom command -->
