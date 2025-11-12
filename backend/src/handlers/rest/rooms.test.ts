@@ -72,7 +72,8 @@ describe('POST /api/rooms - createRoomHandler', () => {
 
       const body = JSON.parse(result.body);
       expect(body.error.code).toBe('VALIDATION_ERROR');
-      expect(body.error.message).toContain('hostName');
+      expect(body.error.message).toBe('Invalid request parameters');
+      expect(body.error.details).toHaveProperty('hostName');
 
       expect(mockRoomService.createRoom).not.toHaveBeenCalled();
     });
@@ -91,8 +92,8 @@ describe('POST /api/rooms - createRoomHandler', () => {
       expect(result.statusCode).toBe(400);
 
       const body = JSON.parse(result.body);
-      expect(body.error.code).toBe('INVALID_REQUEST');
-      expect(body.error.message).toContain('JSON');
+      expect(body.error.code).toBe('INVALID_JSON');
+      expect(body.error.message).toBe('Request body must be valid JSON');
 
       expect(mockRoomService.createRoom).not.toHaveBeenCalled();
     });
