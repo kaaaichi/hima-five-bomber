@@ -6,7 +6,7 @@
  * リファクタリング: Repository層の導入
  */
 
-import { Room, Player } from '@five-bomber/shared';
+import { Room, Player } from '../types-shared/models';
 import { Result, RepositoryError } from '../types/common';
 import { randomBytes } from 'crypto';
 import { RoomRepository } from '../repositories/RoomRepository';

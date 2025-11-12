@@ -5,7 +5,7 @@
 
 import { DynamoDBDocumentClient, PutCommand, GetCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
 import { docClient } from '../utils/dynamodb';
-import { Room } from '@five-bomber/shared';
+import { Room } from '../types-shared/models';
 
 /**
  * RoomRepository - ルームのデータアクセスを担当するリポジトリ

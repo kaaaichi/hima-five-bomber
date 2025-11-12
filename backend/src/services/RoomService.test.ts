@@ -8,7 +8,7 @@
 
 import { RoomService } from './RoomService';
 import { RoomRepository } from '../repositories/RoomRepository';
-import { Room } from '@five-bomber/shared';
+import { Room } from '../types-shared/models';
 
 // RoomRepository をモック
 jest.mock('../repositories/RoomRepository');
