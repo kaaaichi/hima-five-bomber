@@ -1,23 +1,26 @@
 /**
- * POST /api/rooms Lambda Handler
- * ルーム作成APIのハンドラー
+ * Rooms REST API Handler
+ * タスク3.1: ルーム作成APIの実装
+ * タスク3.2: ルーム参加APIの実装
+ * タスク3.3: ルーム退出APIの実装
+ * リファクタリング: Zodバリデーションとリポジトリ層の統合
  */
 
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
+import { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from 'aws-lambda';
 import { RoomService } from '../../services/RoomService';
 import { RoomRepository } from '../../repositories/RoomRepository';
-import { validateCreateRoomRequest, CreateRoomRequest } from '../../types-shared/schemas';
+import { validateCreateRoomRequest, validatePlayerName } from '../../types-shared/schemas';
 
 /**
- * POST /api/rooms Response Body
+ * CORS ヘッダー
  */
-interface CreateRoomResponse {
-  roomId: string;
-  hostId: string;
-}
+const CORS_HEADERS = {
+  'Content-Type': 'application/json',
+  'Access-Control-Allow-Origin': '*',
+};
 
 /**
- * Error Response Body
+ * エラーレスポンス型
  */
 interface ErrorResponse {
   error: {
@@ -28,19 +31,23 @@ interface ErrorResponse {
 }
 
 /**
- * POST /api/rooms Handler
- * ルーム作成リクエストを処理
+ * POST /api/rooms - ルーム作成ハンドラー
+ * @param event API Gateway イベント
+ * @param context Lambda コンテキスト
+ * @returns API Gateway レスポンス
  */
-export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+export async function createRoomHandler(
+  event: APIGatewayProxyEvent,
+  context: Context
+): Promise<APIGatewayProxyResult> {
+  console.log('POST /api/rooms - createRoom handler', { requestId: context.awsRequestId });
+
   try {
-    // リクエストボディの解析
+    // リクエストボディのパース
     if (!event.body) {
       return {
         statusCode: 400,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-        },
+        headers: CORS_HEADERS,
         body: JSON.stringify({
           error: {
             code: 'MISSING_BODY',
@@ -50,17 +57,13 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
       };
     }
 
-    // リクエストボディをパース
     let requestBody: unknown;
     try {
       requestBody = JSON.parse(event.body);
     } catch (error) {
       return {
         statusCode: 400,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-        },
+        headers: CORS_HEADERS,
         body: JSON.stringify({
           error: {
             code: 'INVALID_JSON',
@@ -75,10 +78,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     if (!validation.success) {
       return {
         statusCode: 400,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-        },
+        headers: CORS_HEADERS,
         body: JSON.stringify({
           error: {
             code: 'VALIDATION_ERROR',
@@ -94,66 +94,368 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
     const request = validation.data;
 
-    // サービス初期化
-    const tableName = process.env.DYNAMODB_ROOMS_TABLE || 'five-bomber-rooms';
+    // サービス初期化（Repository層を経由）
+    const tableName = process.env.DYNAMODB_ROOMS_TABLE || 'FiveBomber-Rooms';
     const roomRepository = new RoomRepository(tableName);
     const roomService = new RoomService(roomRepository);
 
     // ルーム作成
     const result = await roomService.createRoom(request.hostName);
 
+    // エラーハンドリング
     if (!result.success) {
-      // エラーレスポンス
-      const statusCode = result.error.type === 'ValidationError' ? 400 : 500;
+      const { error } = result;
 
-      // エラーコードをスネークケースの大文字に変換 (例: DatabaseError -> DATABASE_ERROR)
-      const errorCode = result.error.type.replace(/([A-Z])/g, '_$1').toUpperCase().substring(1);
+      switch (error.type) {
+        case 'ValidationError':
+          return {
+            statusCode: 400,
+            headers: CORS_HEADERS,
+            body: JSON.stringify({
+              error: {
+                code: 'VALIDATION_ERROR',
+                message: error.message,
+              },
+            } as ErrorResponse),
+          };
 
-      return {
-        statusCode,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
+        case 'ConnectionError':
+          return {
+            statusCode: 500,
+            headers: CORS_HEADERS,
+            body: JSON.stringify({
+              error: {
+                code: 'INTERNAL_ERROR',
+                message: error.message,
+              },
+            } as ErrorResponse),
+          };
+
+        case 'NotFoundError':
+          return {
+            statusCode: 404,
+            headers: CORS_HEADERS,
+            body: JSON.stringify({
+              error: {
+                code: 'NOT_FOUND',
+                message: `Room not found: ${error.id}`,
+              },
+            } as ErrorResponse),
+          };
+
+        default:
+          return {
+            statusCode: 500,
+            headers: CORS_HEADERS,
+            body: JSON.stringify({
+              error: {
+                code: 'INTERNAL_ERROR',
+                message: 'Unknown error occurred',
+              },
+            } as ErrorResponse),
+          };
+      }
+    }
+
+    // 成功レスポンス
+    return {
+      statusCode: 200,
+      headers: CORS_HEADERS,
+      body: JSON.stringify(result.value),
+    };
+  } catch (error) {
+    console.error('Unexpected error in createRoomHandler:', error);
+
+    return {
+      statusCode: 500,
+      headers: CORS_HEADERS,
+      body: JSON.stringify({
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'An unexpected error occurred',
         },
+      } as ErrorResponse),
+    };
+  }
+}
+
+/**
+ * POST /api/rooms/:roomId/join - ルーム参加ハンドラー
+ * @param event API Gateway イベント
+ * @param context Lambda コンテキスト
+ * @returns API Gateway レスポンス
+ */
+export async function joinRoomHandler(
+  event: APIGatewayProxyEvent,
+  context: Context
+): Promise<APIGatewayProxyResult> {
+  console.log('POST /api/rooms/:roomId/join - joinRoom handler', {
+    requestId: context.awsRequestId,
+  });
+
+  try {
+    // パスパラメータの取得
+    const roomId = event.pathParameters?.roomId;
+    if (!roomId) {
+      return {
+        statusCode: 400,
+        headers: CORS_HEADERS,
         body: JSON.stringify({
           error: {
-            code: errorCode,
-            message: result.error.message,
+            code: 'VALIDATION_ERROR',
+            message: 'roomId は必須パラメータです',
           },
         } as ErrorResponse),
       };
     }
 
-    // 成功レスポンス
-    const response: CreateRoomResponse = {
-      roomId: result.value.roomId,
-      hostId: result.value.hostId,
-    };
+    // リクエストボディのパース
+    if (!event.body) {
+      return {
+        statusCode: 400,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({
+          error: {
+            code: 'MISSING_BODY',
+            message: 'Request body is required',
+          },
+        } as ErrorResponse),
+      };
+    }
 
+    let requestBody: unknown;
+    try {
+      requestBody = JSON.parse(event.body);
+    } catch (error) {
+      return {
+        statusCode: 400,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({
+          error: {
+            code: 'INVALID_JSON',
+            message: 'Request body must be valid JSON',
+          },
+        } as ErrorResponse),
+      };
+    }
+
+    // playerNameのバリデーション
+    const validation = validatePlayerName((requestBody as any)?.playerName);
+    if (!validation.success) {
+      return {
+        statusCode: 400,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Invalid request parameters',
+            details: validation.errors.reduce(
+              (acc, err) => ({ ...acc, [err.field]: err.message }),
+              {}
+            ),
+          },
+        } as ErrorResponse),
+      };
+    }
+
+    // サービス初期化（Repository層を経由）
+    const tableName = process.env.DYNAMODB_ROOMS_TABLE || 'FiveBomber-Rooms';
+    const roomRepository = new RoomRepository(tableName);
+    const roomService = new RoomService(roomRepository);
+
+    // ルーム参加
+    const result = await roomService.joinRoom(roomId, validation.data);
+
+    // エラーハンドリング
+    if (!result.success) {
+      const { error } = result;
+
+      switch (error.type) {
+        case 'ValidationError':
+          return {
+            statusCode: 400,
+            headers: CORS_HEADERS,
+            body: JSON.stringify({
+              error: {
+                code: 'VALIDATION_ERROR',
+                message: error.message,
+              },
+            } as ErrorResponse),
+          };
+
+        case 'ConnectionError':
+          return {
+            statusCode: 500,
+            headers: CORS_HEADERS,
+            body: JSON.stringify({
+              error: {
+                code: 'INTERNAL_ERROR',
+                message: error.message,
+              },
+            } as ErrorResponse),
+          };
+
+        case 'NotFoundError':
+          return {
+            statusCode: 404,
+            headers: CORS_HEADERS,
+            body: JSON.stringify({
+              error: {
+                code: 'NOT_FOUND',
+                message: `Room not found: ${error.id}`,
+              },
+            } as ErrorResponse),
+          };
+
+        default:
+          return {
+            statusCode: 500,
+            headers: CORS_HEADERS,
+            body: JSON.stringify({
+              error: {
+                code: 'INTERNAL_ERROR',
+                message: 'Unknown error occurred',
+              },
+            } as ErrorResponse),
+          };
+      }
+    }
+
+    // 成功レスポンス
     return {
       statusCode: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      },
-      body: JSON.stringify(response),
+      headers: CORS_HEADERS,
+      body: JSON.stringify(result.value),
     };
   } catch (error) {
-    // 予期しないエラー
-    console.error('Unexpected error in POST /api/rooms:', error);
+    console.error('Unexpected error in joinRoomHandler:', error);
 
     return {
       statusCode: 500,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      },
+      headers: CORS_HEADERS,
       body: JSON.stringify({
         error: {
           code: 'INTERNAL_ERROR',
-          message: 'An unexpected error occurred. Please try again later.',
+          message: 'An unexpected error occurred',
         },
       } as ErrorResponse),
     };
   }
-};
+}
+
+/**
+ * DELETE /api/rooms/:roomId/players/:playerId - ルーム退出ハンドラー
+ * @param event API Gateway イベント
+ * @param context Lambda コンテキスト
+ * @returns API Gateway レスポンス
+ */
+export async function leaveRoomHandler(
+  event: APIGatewayProxyEvent,
+  context: Context
+): Promise<APIGatewayProxyResult> {
+  console.log('DELETE /api/rooms/:roomId/players/:playerId - leaveRoom handler', {
+    requestId: context.awsRequestId,
+  });
+
+  try {
+    // パスパラメータの取得
+    const roomId = event.pathParameters?.roomId;
+    const playerId = event.pathParameters?.playerId;
+
+    if (!roomId || !playerId) {
+      return {
+        statusCode: 400,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'roomId と playerId は必須パラメータです',
+          },
+        } as ErrorResponse),
+      };
+    }
+
+    // サービス初期化（Repository層を経由）
+    const tableName = process.env.DYNAMODB_ROOMS_TABLE || 'FiveBomber-Rooms';
+    const roomRepository = new RoomRepository(tableName);
+    const roomService = new RoomService(roomRepository);
+
+    // ルーム退出
+    const result = await roomService.leaveRoom(roomId, playerId);
+
+    // エラーハンドリング
+    if (!result.success) {
+      const { error } = result;
+
+      switch (error.type) {
+        case 'ValidationError':
+          return {
+            statusCode: 400,
+            headers: CORS_HEADERS,
+            body: JSON.stringify({
+              error: {
+                code: 'VALIDATION_ERROR',
+                message: error.message,
+              },
+            } as ErrorResponse),
+          };
+
+        case 'ConnectionError':
+          return {
+            statusCode: 500,
+            headers: CORS_HEADERS,
+            body: JSON.stringify({
+              error: {
+                code: 'INTERNAL_ERROR',
+                message: error.message,
+              },
+            } as ErrorResponse),
+          };
+
+        case 'NotFoundError':
+          return {
+            statusCode: 404,
+            headers: CORS_HEADERS,
+            body: JSON.stringify({
+              error: {
+                code: 'NOT_FOUND',
+                message: `Resource not found: ${error.id}`,
+              },
+            } as ErrorResponse),
+          };
+
+        default:
+          return {
+            statusCode: 500,
+            headers: CORS_HEADERS,
+            body: JSON.stringify({
+              error: {
+                code: 'INTERNAL_ERROR',
+                message: 'Unknown error occurred',
+              },
+            } as ErrorResponse),
+          };
+      }
+    }
+
+    // 成功レスポンス
+    return {
+      statusCode: 200,
+      headers: CORS_HEADERS,
+      body: JSON.stringify({ message: 'Successfully left the room' }),
+    };
+  } catch (error) {
+    console.error('Unexpected error in leaveRoomHandler:', error);
+
+    return {
+      statusCode: 500,
+      headers: CORS_HEADERS,
+      body: JSON.stringify({
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'An unexpected error occurred',
+        },
+      } as ErrorResponse),
+    };
+  }
+}

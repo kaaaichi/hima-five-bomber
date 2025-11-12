@@ -3,10 +3,10 @@
  * APIエンドポイントからDynamoDBまでの統合テスト
  */
 
-import { APIGatewayProxyEvent } from 'aws-lambda';
+import { APIGatewayProxyEvent, Context } from 'aws-lambda';
 import { mockClient } from 'aws-sdk-client-mock';
 import { DynamoDBDocumentClient, PutCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
-import { handler } from './rooms';
+import { createRoomHandler } from './rooms';
 
 const ddbMock = mockClient(DynamoDBDocumentClient);
 
@@ -42,11 +42,14 @@ describe('POST /api/rooms - Integration Tests', () => {
         resource: '',
       };
 
-      // DynamoDB PutCommandのモック
+      // DynamoDB モック設定
+      // GetCommand: ルームID重複チェック用（重複なし）
+      ddbMock.on(GetCommand).resolves({ Item: undefined });
+      // PutCommand: ルーム保存用
       ddbMock.on(PutCommand).resolves({});
 
       // Act
-      const result = await handler(event);
+      const result = await createRoomHandler(event, {} as Context);
 
       // Assert - レスポンスの検証
       expect(result.statusCode).toBe(200);
@@ -58,21 +61,24 @@ describe('POST /api/rooms - Integration Tests', () => {
       const responseBody = JSON.parse(result.body);
       expect(responseBody).toHaveProperty('roomId');
       expect(responseBody).toHaveProperty('hostId');
-      expect(responseBody.roomId).toMatch(/^[a-z0-9]{6}$/);
-      expect(responseBody.hostId).toMatch(/^player-[a-f0-9]{32}$/);
+      expect(responseBody.roomId).toMatch(/^[A-Z0-9]{6}$/);
+      expect(responseBody.hostId).toMatch(/^[a-f0-9]{32}$/);
 
       // DynamoDB PutCommandが呼ばれたことを確認
       expect(ddbMock.commandCalls(PutCommand)).toHaveLength(1);
       const putCall = ddbMock.commandCalls(PutCommand)[0];
       expect(putCall.args[0].input.TableName).toBe('test-rooms-table');
       expect(putCall.args[0].input.Item).toMatchObject({
-        PK: expect.stringMatching(/^ROOM#[a-z0-9]{6}$/),
-        SK: 'METADATA',
+        roomId: expect.stringMatching(/^[A-Z0-9]{6}$/),
+        hostId: expect.stringMatching(/^[a-f0-9]{32}$/),
         status: 'waiting',
+        createdAt: expect.any(Number),
       });
       expect(putCall.args[0].input.Item?.players).toHaveLength(1);
       expect(putCall.args[0].input.Item?.players[0]).toMatchObject({
+        playerId: expect.stringMatching(/^[a-f0-9]{32}$/),
         name: 'Test Host Player',
+        joinedAt: expect.any(Number),
       });
     });
 
@@ -97,10 +103,12 @@ describe('POST /api/rooms - Integration Tests', () => {
         resource: '',
       };
 
+      // DynamoDB モック設定
+      ddbMock.on(GetCommand).resolves({ Item: undefined });
       ddbMock.on(PutCommand).resolves({});
 
       // Act
-      const result = await handler(event);
+      const result = await createRoomHandler(event, {} as Context);
 
       // Assert
       expect(result.statusCode).toBe(200);
@@ -133,7 +141,7 @@ describe('POST /api/rooms - Integration Tests', () => {
       };
 
       // Act
-      const result = await handler(event);
+      const result = await createRoomHandler(event, {} as Context);
 
       // Assert
       expect(result.statusCode).toBe(400);
@@ -169,7 +177,7 @@ describe('POST /api/rooms - Integration Tests', () => {
       };
 
       // Act
-      const result = await handler(event);
+      const result = await createRoomHandler(event, {} as Context);
 
       // Assert
       expect(result.statusCode).toBe(400);
@@ -205,7 +213,7 @@ describe('POST /api/rooms - Integration Tests', () => {
       };
 
       // Act
-      const result = await handler(event);
+      const result = await createRoomHandler(event, {} as Context);
 
       // Assert
       expect(result.statusCode).toBe(400);
@@ -237,18 +245,17 @@ describe('POST /api/rooms - Integration Tests', () => {
       };
 
       // DynamoDBエラーをシミュレート
+      ddbMock.on(GetCommand).rejects(new Error('DynamoDB connection timeout'));
       ddbMock.on(PutCommand).rejects(new Error('DynamoDB connection timeout'));
 
       // Act
-      const result = await handler(event);
+      const result = await createRoomHandler(event, {} as Context);
 
       // Assert
       expect(result.statusCode).toBe(500);
       const responseBody = JSON.parse(result.body);
-      expect(responseBody.error).toMatchObject({
-        code: 'DATABASE_ERROR',
-        message: 'DynamoDB connection timeout',
-      });
+      expect(responseBody.error.code).toBe('INTERNAL_ERROR');
+      expect(responseBody.error.message).toContain('DynamoDB connection timeout');
     });
   });
 
@@ -274,10 +281,12 @@ describe('POST /api/rooms - Integration Tests', () => {
         resource: '',
       };
 
+      // DynamoDB モック設定
+      ddbMock.on(GetCommand).resolves({ Item: undefined });
       ddbMock.on(PutCommand).resolves({});
 
       // Act
-      const result = await handler(event);
+      const result = await createRoomHandler(event, {} as Context);
 
       // Assert
       expect(result.headers).toHaveProperty('Access-Control-Allow-Origin');
@@ -311,10 +320,12 @@ describe('POST /api/rooms - Integration Tests', () => {
         resource: '',
       };
 
+      // DynamoDB モック設定
+      ddbMock.on(GetCommand).resolves({ Item: undefined });
       ddbMock.on(PutCommand).resolves({});
 
       // Act
-      const result = await handler(event);
+      const result = await createRoomHandler(event, {} as Context);
 
       // Assert - API Response
       expect(result.statusCode).toBe(200);
@@ -327,8 +338,6 @@ describe('POST /api/rooms - Integration Tests', () => {
 
       const savedItem = putCalls[0].args[0].input.Item;
       expect(savedItem).toMatchObject({
-        PK: `ROOM#${roomId}`,
-        SK: 'METADATA',
         roomId: roomId,
         hostId: hostId,
         status: 'waiting',
@@ -340,7 +349,6 @@ describe('POST /api/rooms - Integration Tests', () => {
           },
         ],
         createdAt: expect.any(Number),
-        updatedAt: expect.any(Number),
       });
 
       // タイムスタンプが妥当な範囲内であることを確認

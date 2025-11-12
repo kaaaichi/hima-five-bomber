@@ -1,36 +1,79 @@
 /**
- * RoomRepository Unit Tests (TDD: Red Phase)
- * DynamoDBへのRoom CRUD操作のテスト
+ * RoomRepository - Unit Tests (TDD)
+ * Repository層: データアクセスロジックのテスト
  */
 
-import { mockClient } from 'aws-sdk-client-mock';
-import { DynamoDBDocumentClient, PutCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
 import { RoomRepository } from './RoomRepository';
-import { Room, Player } from '../types-shared/models';
+import { mockClient } from 'aws-sdk-client-mock';
+import { DynamoDBDocumentClient, PutCommand, GetCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
+import { Room } from '../types-shared/models';
 
+// DynamoDB Document Client のモック
 const ddbMock = mockClient(DynamoDBDocumentClient);
 
 describe('RoomRepository', () => {
-  let repository: RoomRepository;
+  let roomRepository: RoomRepository;
+  const testTableName = 'test-rooms-table';
 
   beforeEach(() => {
     ddbMock.reset();
-    repository = new RoomRepository(process.env.DYNAMODB_ROOMS_TABLE || 'five-bomber-rooms');
+    roomRepository = new RoomRepository(testTableName);
   });
 
-  describe('create', () => {
-    test('Given valid room data WHEN create is called THEN room is saved to DynamoDB', async () => {
+  describe('findById', () => {
+    it('Given ルームが存在する When findById が呼ばれる Then ルームオブジェクトが返される', async () => {
       // Arrange
-      const hostPlayer: Player = {
-        playerId: 'player-123',
-        name: 'Host Player',
-        joinedAt: Date.now(),
+      const roomId = 'TEST01';
+      const mockRoom: Room = {
+        roomId,
+        hostId: 'host-123',
+        players: [{ playerId: 'host-123', name: 'Host', joinedAt: Date.now() }],
+        status: 'waiting',
+        createdAt: Date.now(),
       };
 
+      ddbMock.on(GetCommand).resolves({ Item: mockRoom });
+
+      // Act
+      const result = await roomRepository.findById(roomId);
+
+      // Assert
+      expect(result).toEqual(mockRoom);
+      const getCalls = ddbMock.commandCalls(GetCommand);
+      expect(getCalls.length).toBe(1);
+      expect(getCalls[0].args[0].input).toEqual({
+        TableName: testTableName,
+        Key: { roomId },
+      });
+    });
+
+    it('Given ルームが存在しない When findById が呼ばれる Then null が返される', async () => {
+      // Arrange
+      ddbMock.on(GetCommand).resolves({ Item: undefined });
+
+      // Act
+      const result = await roomRepository.findById('NONEXIST');
+
+      // Assert
+      expect(result).toBeNull();
+    });
+
+    it('Given DynamoDBエラーが発生 When findById が呼ばれる Then エラーがスローされる', async () => {
+      // Arrange
+      ddbMock.on(GetCommand).rejects(new Error('DynamoDB Error'));
+
+      // Act & Assert
+      await expect(roomRepository.findById('TEST01')).rejects.toThrow('DynamoDB Error');
+    });
+  });
+
+  describe('save', () => {
+    it('Given ルームオブジェクト When save が呼ばれる Then DynamoDBに保存される', async () => {
+      // Arrange
       const room: Room = {
-        roomId: 'room-abc123',
-        hostId: 'player-123',
-        players: [hostPlayer],
+        roomId: 'TEST01',
+        hostId: 'host-123',
+        players: [{ playerId: 'host-123', name: 'Host', joinedAt: Date.now() }],
         status: 'waiting',
         createdAt: Date.now(),
       };
@@ -38,111 +81,90 @@ describe('RoomRepository', () => {
       ddbMock.on(PutCommand).resolves({});
 
       // Act
-      const result = await repository.create(room);
+      await roomRepository.save(room);
 
       // Assert
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.value.roomId).toBe('room-abc123');
-        expect(result.value.hostId).toBe('player-123');
-        expect(result.value.players).toHaveLength(1);
-      }
-
-      expect(ddbMock.commandCalls(PutCommand)).toHaveLength(1);
-      const putCall = ddbMock.commandCalls(PutCommand)[0];
-      expect(putCall.args[0].input.Item).toMatchObject({
-        PK: 'ROOM#room-abc123',
-        SK: 'METADATA',
-        roomId: 'room-abc123',
-        hostId: 'player-123',
-        status: 'waiting',
+      const putCalls = ddbMock.commandCalls(PutCommand);
+      expect(putCalls.length).toBe(1);
+      expect(putCalls[0].args[0].input).toEqual({
+        TableName: testTableName,
+        Item: room,
       });
     });
 
-    test('Given DynamoDB error WHEN create is called THEN error result is returned', async () => {
+    it('Given DynamoDBエラーが発生 When save が呼ばれる Then エラーがスローされる', async () => {
       // Arrange
       const room: Room = {
-        roomId: 'room-abc123',
-        hostId: 'player-123',
+        roomId: 'TEST01',
+        hostId: 'host-123',
         players: [],
         status: 'waiting',
         createdAt: Date.now(),
       };
 
-      ddbMock.on(PutCommand).rejects(new Error('DynamoDB connection failed'));
+      ddbMock.on(PutCommand).rejects(new Error('DynamoDB Error'));
 
-      // Act
-      const result = await repository.create(room);
-
-      // Assert
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error.type).toBe('ConnectionError');
-        if (result.error.type === 'ConnectionError') {
-          expect(result.error.message).toContain('DynamoDB connection failed');
-        }
-      }
+      // Act & Assert
+      await expect(roomRepository.save(room)).rejects.toThrow('DynamoDB Error');
     });
   });
 
-  describe('get', () => {
-    test('Given existing roomId WHEN get is called THEN room is retrieved', async () => {
+  describe('delete', () => {
+    it('Given ルームID When delete が呼ばれる Then DynamoDBから削除される', async () => {
       // Arrange
-      const roomId = 'room-abc123';
-      const mockItem = {
-        PK: 'ROOM#room-abc123',
-        SK: 'METADATA',
-        roomId: 'room-abc123',
-        hostId: 'player-123',
-        players: [
-          {
-            playerId: 'player-123',
-            name: 'Host Player',
-            joinedAt: 1234567890,
-          },
-        ],
-        status: 'waiting',
-        createdAt: 1234567890,
-        updatedAt: 1234567890,
-      };
-
-      ddbMock.on(GetCommand).resolves({ Item: mockItem });
+      const roomId = 'TEST01';
+      ddbMock.on(DeleteCommand).resolves({});
 
       // Act
-      const result = await repository.get(roomId);
+      await roomRepository.delete(roomId);
 
       // Assert
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.value).not.toBeNull();
-        if (result.value) {
-          expect(result.value.roomId).toBe('room-abc123');
-          expect(result.value.hostId).toBe('player-123');
-          expect(result.value.players).toHaveLength(1);
-        }
-      }
-
-      expect(ddbMock.commandCalls(GetCommand)).toHaveLength(1);
-      const getCall = ddbMock.commandCalls(GetCommand)[0];
-      expect(getCall.args[0].input.Key).toEqual({
-        PK: 'ROOM#room-abc123',
-        SK: 'METADATA',
+      const deleteCalls = ddbMock.commandCalls(DeleteCommand);
+      expect(deleteCalls.length).toBe(1);
+      expect(deleteCalls[0].args[0].input).toEqual({
+        TableName: testTableName,
+        Key: { roomId },
       });
     });
 
-    test('Given non-existing roomId WHEN get is called THEN null is returned', async () => {
+    it('Given DynamoDBエラーが発生 When delete が呼ばれる Then エラーがスローされる', async () => {
       // Arrange
-      const roomId = 'room-nonexistent';
+      ddbMock.on(DeleteCommand).rejects(new Error('DynamoDB Error'));
+
+      // Act & Assert
+      await expect(roomRepository.delete('TEST01')).rejects.toThrow('DynamoDB Error');
+    });
+  });
+
+  describe('existsById', () => {
+    it('Given ルームが存在する When existsById が呼ばれる Then true が返される', async () => {
+      // Arrange
+      const mockRoom: Room = {
+        roomId: 'TEST01',
+        hostId: 'host-123',
+        players: [],
+        status: 'waiting',
+        createdAt: Date.now(),
+      };
+
+      ddbMock.on(GetCommand).resolves({ Item: mockRoom });
+
+      // Act
+      const result = await roomRepository.existsById('TEST01');
+
+      // Assert
+      expect(result).toBe(true);
+    });
+
+    it('Given ルームが存在しない When existsById が呼ばれる Then false が返される', async () => {
+      // Arrange
       ddbMock.on(GetCommand).resolves({ Item: undefined });
 
       // Act
-      const result = await repository.get(roomId);
+      const result = await roomRepository.existsById('NONEXIST');
 
       // Assert
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.value).toBeNull();
-      }
+      expect(result).toBe(false);
     });
   });
 });

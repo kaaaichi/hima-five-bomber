@@ -16,7 +16,7 @@ export type Result<T, E> =
 export type RepositoryError =
   | { type: 'ConnectionError'; message: string }
   | { type: 'ValidationError'; message: string }
-  | { type: 'NotFoundError'; sessionId: string };
+  | { type: 'NotFoundError'; id: string };
 
 /**
  * Service error types
