@@ -3,22 +3,28 @@
  * タスク3.1: ルーム作成機能のテスト
  * タスク3.2: ルーム参加機能のテスト
  * タスク3.3: ルーム退出機能のテスト
+ * リファクタリング: Repository層のモックを使用
  */
 
 import { RoomService } from './RoomService';
-import { mockClient } from 'aws-sdk-client-mock';
-import { DynamoDBDocumentClient, PutCommand, GetCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
+import { RoomRepository } from '../repositories/RoomRepository';
+import { Room } from '@five-bomber/shared';
 
-// DynamoDB Document Client のモック
-const ddbMock = mockClient(DynamoDBDocumentClient);
+// RoomRepository をモック
+jest.mock('../repositories/RoomRepository');
 
 describe('RoomService', () => {
   let roomService: RoomService;
-  const testTableName = 'test-rooms-table';
+  let mockRoomRepository: jest.Mocked<RoomRepository>;
 
   beforeEach(() => {
-    ddbMock.reset();
-    roomService = new RoomService(testTableName);
+    jest.clearAllMocks();
+
+    // モックインスタンスを作成
+    mockRoomRepository = new RoomRepository() as jest.Mocked<RoomRepository>;
+
+    // RoomServiceにモックを注入
+    roomService = new RoomService(mockRoomRepository);
   });
 
   describe('Acceptance Criteria: ルーム作成機能', () => {
@@ -27,8 +33,8 @@ describe('RoomService', () => {
 
       it('When createRoom が呼ばれる Then ユニークなルームIDが生成される', async () => {
         // Arrange
-        ddbMock.on(PutCommand).resolves({});
-        ddbMock.on(GetCommand).resolves({ Item: undefined }); // ルームIDが存在しないことを確認
+        mockRoomRepository.existsById = jest.fn().mockResolvedValue(false);
+        mockRoomRepository.save = jest.fn().mockResolvedValue(undefined);
 
         // Act
         const result = await roomService.createRoom(hostName);
@@ -43,37 +49,35 @@ describe('RoomService', () => {
 
       it('When createRoom が呼ばれる Then DynamoDB Roomsテーブルにルームが保存される', async () => {
         // Arrange
-        ddbMock.on(PutCommand).resolves({});
-        ddbMock.on(GetCommand).resolves({ Item: undefined });
+        mockRoomRepository.existsById = jest.fn().mockResolvedValue(false);
+        mockRoomRepository.save = jest.fn().mockResolvedValue(undefined);
 
         // Act
         await roomService.createRoom(hostName);
 
         // Assert
-        const putCalls = ddbMock.commandCalls(PutCommand);
-        expect(putCalls.length).toBe(1);
-
-        const putParams = putCalls[0].args[0].input;
-        expect(putParams.TableName).toBe(testTableName);
-        expect(putParams.Item).toMatchObject({
-          roomId: expect.any(String),
-          hostId: expect.any(String),
-          status: 'waiting',
-          players: expect.arrayContaining([
-            expect.objectContaining({
-              playerId: expect.any(String),
-              name: hostName,
-              joinedAt: expect.any(Number),
-            }),
-          ]),
-          createdAt: expect.any(Number),
-        });
+        expect(mockRoomRepository.save).toHaveBeenCalledTimes(1);
+        expect(mockRoomRepository.save).toHaveBeenCalledWith(
+          expect.objectContaining({
+            roomId: expect.any(String),
+            hostId: expect.any(String),
+            status: 'waiting',
+            players: expect.arrayContaining([
+              expect.objectContaining({
+                playerId: expect.any(String),
+                name: hostName,
+                joinedAt: expect.any(Number),
+              }),
+            ]),
+            createdAt: expect.any(Number),
+          })
+        );
       });
 
       it('When createRoom が呼ばれる Then レスポンスに roomId と hostId が含まれる', async () => {
         // Arrange
-        ddbMock.on(PutCommand).resolves({});
-        ddbMock.on(GetCommand).resolves({ Item: undefined });
+        mockRoomRepository.existsById = jest.fn().mockResolvedValue(false);
+        mockRoomRepository.save = jest.fn().mockResolvedValue(undefined);
 
         // Act
         const result = await roomService.createRoom(hostName);
@@ -90,8 +94,8 @@ describe('RoomService', () => {
 
       it('When DynamoDBエラーが発生する Then エラーレスポンスが返される', async () => {
         // Arrange
-        ddbMock.on(PutCommand).rejects(new Error('DynamoDB Connection Error'));
-        ddbMock.on(GetCommand).resolves({ Item: undefined });
+        mockRoomRepository.existsById = jest.fn().mockResolvedValue(false);
+        mockRoomRepository.save = jest.fn().mockRejectedValue(new Error('DynamoDB Connection Error'));
 
         // Act
         const result = await roomService.createRoom(hostName);
@@ -142,8 +146,8 @@ describe('RoomService', () => {
   describe('ルームID生成のユニークネス', () => {
     it('Given 連続でルームを作成する When createRoom が複数回呼ばれる Then 異なるルームIDが生成される', async () => {
       // Arrange
-      ddbMock.on(PutCommand).resolves({});
-      ddbMock.on(GetCommand).resolves({ Item: undefined });
+      mockRoomRepository.existsById = jest.fn().mockResolvedValue(false);
+      mockRoomRepository.save = jest.fn().mockResolvedValue(undefined);
 
       // Act
       const result1 = await roomService.createRoom('Host1');
@@ -170,7 +174,7 @@ describe('RoomService', () => {
 
       it('When joinRoom が呼ばれる Then プレイヤーがルームに追加される', async () => {
         // Arrange
-        const existingRoom = {
+        const existingRoom: Room = {
           roomId,
           hostId: 'host-123',
           players: [{ playerId: 'host-123', name: 'Host', joinedAt: Date.now() }],
@@ -178,8 +182,8 @@ describe('RoomService', () => {
           createdAt: Date.now(),
         };
 
-        ddbMock.on(GetCommand).resolves({ Item: existingRoom });
-        ddbMock.on(PutCommand).resolves({});
+        mockRoomRepository.findById = jest.fn().mockResolvedValue(existingRoom);
+        mockRoomRepository.save = jest.fn().mockResolvedValue(undefined);
 
         // Act
         const result = await roomService.joinRoom(roomId, playerName);
@@ -194,7 +198,7 @@ describe('RoomService', () => {
 
       it('When joinRoom が呼ばれる Then DynamoDBが更新される', async () => {
         // Arrange
-        const existingRoom = {
+        const existingRoom: Room = {
           roomId,
           hostId: 'host-123',
           players: [{ playerId: 'host-123', name: 'Host', joinedAt: Date.now() }],
@@ -202,29 +206,22 @@ describe('RoomService', () => {
           createdAt: Date.now(),
         };
 
-        ddbMock.on(GetCommand).resolves({ Item: existingRoom });
-        ddbMock.on(PutCommand).resolves({});
+        mockRoomRepository.findById = jest.fn().mockResolvedValue(existingRoom);
+        mockRoomRepository.save = jest.fn().mockResolvedValue(undefined);
 
         // Act
         await roomService.joinRoom(roomId, playerName);
 
         // Assert
-        const putCalls = ddbMock.commandCalls(PutCommand);
-        expect(putCalls.length).toBeGreaterThan(0);
-
-        const lastPutCall = putCalls[putCalls.length - 1];
-        const updatedRoom = lastPutCall.args[0].input.Item;
-
-        expect(updatedRoom).toBeDefined();
-        if (updatedRoom) {
-          expect(updatedRoom.players.length).toBe(2);
-          expect(updatedRoom.players[1].name).toBe(playerName);
-        }
+        expect(mockRoomRepository.save).toHaveBeenCalledTimes(1);
+        const savedRoom = mockRoomRepository.save.mock.calls[0][0];
+        expect(savedRoom.players.length).toBe(2);
+        expect(savedRoom.players[1].name).toBe(playerName);
       });
 
       it('When joinRoom が呼ばれる Then レスポンスに playerId が含まれる', async () => {
         // Arrange
-        const existingRoom = {
+        const existingRoom: Room = {
           roomId,
           hostId: 'host-123',
           players: [{ playerId: 'host-123', name: 'Host', joinedAt: Date.now() }],
@@ -232,8 +229,8 @@ describe('RoomService', () => {
           createdAt: Date.now(),
         };
 
-        ddbMock.on(GetCommand).resolves({ Item: existingRoom });
-        ddbMock.on(PutCommand).resolves({});
+        mockRoomRepository.findById = jest.fn().mockResolvedValue(existingRoom);
+        mockRoomRepository.save = jest.fn().mockResolvedValue(undefined);
 
         // Act
         const result = await roomService.joinRoom(roomId, playerName);
@@ -253,7 +250,7 @@ describe('RoomService', () => {
 
       it('When 新しいプレイヤーが参加しようとする Then ValidationErrorが返される', async () => {
         // Arrange
-        const fullRoom = {
+        const fullRoom: Room = {
           roomId,
           hostId: 'host-123',
           players: Array(5)
@@ -267,7 +264,7 @@ describe('RoomService', () => {
           createdAt: Date.now(),
         };
 
-        ddbMock.on(GetCommand).resolves({ Item: fullRoom });
+        mockRoomRepository.findById = jest.fn().mockResolvedValue(fullRoom);
 
         // Act
         const result = await roomService.joinRoom(roomId, playerName);
@@ -286,7 +283,7 @@ describe('RoomService', () => {
     describe('Given ルームが存在しない', () => {
       it('When joinRoom が呼ばれる Then NotFoundErrorが返される', async () => {
         // Arrange
-        ddbMock.on(GetCommand).resolves({ Item: undefined });
+        mockRoomRepository.findById = jest.fn().mockResolvedValue(null);
 
         // Act
         const result = await roomService.joinRoom('NONEXIST', 'Player');
@@ -302,7 +299,7 @@ describe('RoomService', () => {
     describe('Given ルームがゲーム中である', () => {
       it('When joinRoom が呼ばれる Then ValidationErrorが返される', async () => {
         // Arrange
-        const playingRoom = {
+        const playingRoom: Room = {
           roomId: 'PLAY01',
           hostId: 'host-123',
           players: [{ playerId: 'host-123', name: 'Host', joinedAt: Date.now() }],
@@ -310,7 +307,7 @@ describe('RoomService', () => {
           createdAt: Date.now(),
         };
 
-        ddbMock.on(GetCommand).resolves({ Item: playingRoom });
+        mockRoomRepository.findById = jest.fn().mockResolvedValue(playingRoom);
 
         // Act
         const result = await roomService.joinRoom('PLAY01', 'NewPlayer');
@@ -346,8 +343,8 @@ describe('RoomService', () => {
           createdAt: Date.now(),
         };
 
-        ddbMock.on(GetCommand).resolves({ Item: existingRoom });
-        ddbMock.on(PutCommand).resolves({});
+        mockRoomRepository.findById = jest.fn().mockResolvedValue(existingRoom);
+        mockRoomRepository.save = jest.fn().mockResolvedValue(undefined);
 
         // Act
         const result = await roomService.leaveRoom(roomId, playerId);
@@ -369,18 +366,19 @@ describe('RoomService', () => {
           createdAt: Date.now(),
         };
 
-        ddbMock.on(GetCommand).resolves({ Item: existingRoom });
-        ddbMock.on(PutCommand).resolves({});
+        mockRoomRepository.findById = jest.fn().mockResolvedValue(existingRoom);
+        mockRoomRepository.save = jest.fn().mockResolvedValue(undefined);
 
         // Act
         await roomService.leaveRoom(roomId, playerId);
 
         // Assert
-        const putCalls = ddbMock.commandCalls(PutCommand);
-        expect(putCalls.length).toBeGreaterThan(0);
+        expect(mockRoomRepository.save).toHaveBeenCalled();
+        const saveCalls = mockRoomRepository.save.mock.calls;
+        expect(saveCalls.length).toBeGreaterThan(0);
 
-        const lastPutCall = putCalls[putCalls.length - 1];
-        const updatedRoom = lastPutCall.args[0].input.Item;
+        const lastSaveCall = saveCalls[saveCalls.length - 1];
+        const updatedRoom = lastSaveCall[0];
 
         expect(updatedRoom).toBeDefined();
         if (updatedRoom) {
@@ -407,18 +405,19 @@ describe('RoomService', () => {
           createdAt: Date.now(),
         };
 
-        ddbMock.on(GetCommand).resolves({ Item: existingRoom });
-        ddbMock.on(PutCommand).resolves({});
+        mockRoomRepository.findById = jest.fn().mockResolvedValue(existingRoom);
+        mockRoomRepository.save = jest.fn().mockResolvedValue(undefined);
 
         // Act
         await roomService.leaveRoom(roomId, hostId);
 
         // Assert
-        const putCalls = ddbMock.commandCalls(PutCommand);
-        expect(putCalls.length).toBeGreaterThan(0);
+        expect(mockRoomRepository.save).toHaveBeenCalled();
+        const saveCalls = mockRoomRepository.save.mock.calls;
+        expect(saveCalls.length).toBeGreaterThan(0);
 
-        const lastPutCall = putCalls[putCalls.length - 1];
-        const updatedRoom = lastPutCall.args[0].input.Item;
+        const lastSaveCall = saveCalls[saveCalls.length - 1];
+        const updatedRoom = lastSaveCall[0];
 
         expect(updatedRoom).toBeDefined();
         if (updatedRoom) {
@@ -442,28 +441,23 @@ describe('RoomService', () => {
           createdAt: Date.now(),
         };
 
-        ddbMock.on(GetCommand).resolves({ Item: existingRoom });
-        ddbMock.on(DeleteCommand).resolves({});
+        mockRoomRepository.findById = jest.fn().mockResolvedValue(existingRoom);
+        mockRoomRepository.delete = jest.fn().mockResolvedValue(undefined);
 
         // Act
         const result = await roomService.leaveRoom(roomId, lastPlayerId);
 
         // Assert
         expect(result.success).toBe(true);
-
-        const deleteCalls = ddbMock.commandCalls(DeleteCommand);
-        expect(deleteCalls.length).toBe(1);
-
-        const deleteParams = deleteCalls[0].args[0].input;
-        expect(deleteParams.TableName).toBe(testTableName);
-        expect(deleteParams.Key).toEqual({ roomId });
+        expect(mockRoomRepository.delete).toHaveBeenCalledWith(roomId);
+        expect(mockRoomRepository.delete).toHaveBeenCalledTimes(1);
       });
     });
 
     describe('Given ルームが存在しない', () => {
       it('When leaveRoom が呼ばれる Then NotFoundErrorが返される', async () => {
         // Arrange
-        ddbMock.on(GetCommand).resolves({ Item: undefined });
+        mockRoomRepository.findById = jest.fn().mockResolvedValue(null);
 
         // Act
         const result = await roomService.leaveRoom('NONEXIST', 'player-1');
@@ -487,7 +481,7 @@ describe('RoomService', () => {
           createdAt: Date.now(),
         };
 
-        ddbMock.on(GetCommand).resolves({ Item: existingRoom });
+        mockRoomRepository.findById = jest.fn().mockResolvedValue(existingRoom);
 
         // Act
         const result = await roomService.leaveRoom('TEST01', 'nonexistent-player');

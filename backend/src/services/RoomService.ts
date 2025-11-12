@@ -3,13 +3,13 @@
  * タスク3.1: ルーム作成機能の実装
  * タスク3.2: ルーム参加機能の実装
  * タスク3.3: ルーム退出機能の実装
+ * リファクタリング: Repository層の導入
  */
 
-import { DynamoDBDocumentClient, PutCommand, GetCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
-import { docClient } from '../utils/dynamodb';
 import { Room, Player } from '@five-bomber/shared';
 import { Result, RepositoryError } from '../types/common';
 import { randomBytes } from 'crypto';
+import { RoomRepository } from '../repositories/RoomRepository';
 
 /**
  * ルーム作成レスポンス
@@ -28,14 +28,13 @@ export interface JoinRoomResponse {
 
 /**
  * RoomService - ルームの作成・管理を担当するサービス
+ * ビジネスロジックに集中し、データアクセスはRepositoryに委譲
  */
 export class RoomService {
-  private readonly client: DynamoDBDocumentClient;
-  private readonly tableName: string;
+  private readonly roomRepository: RoomRepository;
 
-  constructor(tableName?: string, client?: DynamoDBDocumentClient) {
-    this.tableName = tableName || process.env.ROOMS_TABLE_NAME || 'FiveBomber-Rooms';
-    this.client = client || docClient;
+  constructor(roomRepository?: RoomRepository) {
+    this.roomRepository = roomRepository || new RoomRepository();
   }
 
   /**
@@ -73,13 +72,8 @@ export class RoomService {
         createdAt: Date.now(),
       };
 
-      // DynamoDBに保存
-      await this.client.send(
-        new PutCommand({
-          TableName: this.tableName,
-          Item: room,
-        })
-      );
+      // Repositoryを使用してDBに保存
+      await this.roomRepository.save(room);
 
       return {
         success: true,
@@ -142,15 +136,10 @@ export class RoomService {
     while (!isUnique && attempts < maxAttempts) {
       roomId = this.generateRoomId();
 
-      // ルームIDが既に存在するかチェック
-      const existingRoom = await this.client.send(
-        new GetCommand({
-          TableName: this.tableName,
-          Key: { roomId },
-        })
-      );
+      // Repositoryを使用してルームIDが既に存在するかチェック
+      const exists = await this.roomRepository.existsById(roomId);
 
-      if (!existingRoom.Item) {
+      if (!exists) {
         isUnique = true;
         return roomId;
       }
@@ -202,15 +191,10 @@ export class RoomService {
     }
 
     try {
-      // ルームを取得
-      const getResult = await this.client.send(
-        new GetCommand({
-          TableName: this.tableName,
-          Key: { roomId },
-        })
-      );
+      // Repositoryを使用してルームを取得
+      const room = await this.roomRepository.findById(roomId);
 
-      if (!getResult.Item) {
+      if (!room) {
         return {
           success: false,
           error: {
@@ -219,8 +203,6 @@ export class RoomService {
           },
         };
       }
-
-      const room = getResult.Item as Room;
 
       // ルームのステータスチェック
       if (room.status !== 'waiting') {
@@ -255,13 +237,8 @@ export class RoomService {
       // プレイヤーをルームに追加
       room.players.push(newPlayer);
 
-      // DynamoDBを更新
-      await this.client.send(
-        new PutCommand({
-          TableName: this.tableName,
-          Item: room,
-        })
-      );
+      // Repositoryを使用してDBを更新
+      await this.roomRepository.save(room);
 
       return {
         success: true,
@@ -317,15 +294,10 @@ export class RoomService {
    */
   async leaveRoom(roomId: string, playerId: string): Promise<Result<void, RepositoryError>> {
     try {
-      // ルームを取得
-      const getResult = await this.client.send(
-        new GetCommand({
-          TableName: this.tableName,
-          Key: { roomId },
-        })
-      );
+      // Repositoryを使用してルームを取得
+      const room = await this.roomRepository.findById(roomId);
 
-      if (!getResult.Item) {
+      if (!room) {
         return {
           success: false,
           error: {
@@ -334,8 +306,6 @@ export class RoomService {
           },
         };
       }
-
-      const room = getResult.Item as Room;
 
       // プレイヤーが存在するかチェック
       const playerIndex = room.players.findIndex((p) => p.playerId === playerId);
@@ -354,12 +324,7 @@ export class RoomService {
 
       // 全プレイヤーが退出した場合、ルームを削除
       if (room.players.length === 0) {
-        await this.client.send(
-          new DeleteCommand({
-            TableName: this.tableName,
-            Key: { roomId },
-          })
-        );
+        await this.roomRepository.delete(roomId);
 
         return {
           success: true,
@@ -374,13 +339,8 @@ export class RoomService {
         room.hostId = sortedPlayers[0].playerId;
       }
 
-      // DynamoDBを更新
-      await this.client.send(
-        new PutCommand({
-          TableName: this.tableName,
-          Item: room,
-        })
-      );
+      // Repositoryを使用してDBを更新
+      await this.roomRepository.save(room);
 
       return {
         success: true,
