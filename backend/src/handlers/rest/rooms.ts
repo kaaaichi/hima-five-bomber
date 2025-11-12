@@ -3,10 +3,13 @@
  * タスク3.1: ルーム作成APIの実装
  * タスク3.2: ルーム参加APIの実装
  * タスク3.3: ルーム退出APIの実装
+ * リファクタリング: Zodバリデーションとリポジトリ層の統合
  */
 
 import { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from 'aws-lambda';
 import { RoomService } from '../../services/RoomService';
+import { RoomRepository } from '../../repositories/RoomRepository';
+import { validateCreateRoomRequest, validatePlayerName } from '../../types-shared/schemas';
 
 /**
  * CORS ヘッダー
@@ -23,7 +26,7 @@ interface ErrorResponse {
   error: {
     code: string;
     message: string;
-    details?: Record<string, string>;
+    details?: unknown;
   };
 }
 
@@ -47,14 +50,14 @@ export async function createRoomHandler(
         headers: CORS_HEADERS,
         body: JSON.stringify({
           error: {
-            code: 'INVALID_REQUEST',
-            message: 'リクエストボディが空です',
+            code: 'MISSING_BODY',
+            message: 'Request body is required',
           },
         } as ErrorResponse),
       };
     }
 
-    let requestBody: { hostName?: string };
+    let requestBody: unknown;
     try {
       requestBody = JSON.parse(event.body);
     } catch (error) {
@@ -63,30 +66,41 @@ export async function createRoomHandler(
         headers: CORS_HEADERS,
         body: JSON.stringify({
           error: {
-            code: 'INVALID_REQUEST',
-            message: 'リクエストボディが不正なJSON形式です',
+            code: 'INVALID_JSON',
+            message: 'Request body must be valid JSON',
           },
         } as ErrorResponse),
       };
     }
 
-    // バリデーション
-    if (!requestBody.hostName) {
+    // Zodによるバリデーション
+    const validation = validateCreateRoomRequest(requestBody);
+    if (!validation.success) {
       return {
         statusCode: 400,
         headers: CORS_HEADERS,
         body: JSON.stringify({
           error: {
             code: 'VALIDATION_ERROR',
-            message: 'hostName は必須パラメータです',
+            message: 'Invalid request parameters',
+            details: validation.errors.reduce(
+              (acc, err) => ({ ...acc, [err.field]: err.message }),
+              {}
+            ),
           },
         } as ErrorResponse),
       };
     }
 
-    // RoomService を使用してルームを作成
-    const roomService = new RoomService();
-    const result = await roomService.createRoom(requestBody.hostName);
+    const request = validation.data;
+
+    // サービス初期化（Repository層を経由）
+    const tableName = process.env.DYNAMODB_ROOMS_TABLE || 'FiveBomber-Rooms';
+    const roomRepository = new RoomRepository(tableName);
+    const roomService = new RoomService(roomRepository);
+
+    // ルーム作成
+    const result = await roomService.createRoom(request.hostName);
 
     // エラーハンドリング
     if (!result.success) {
@@ -202,14 +216,14 @@ export async function joinRoomHandler(
         headers: CORS_HEADERS,
         body: JSON.stringify({
           error: {
-            code: 'INVALID_REQUEST',
-            message: 'リクエストボディが空です',
+            code: 'MISSING_BODY',
+            message: 'Request body is required',
           },
         } as ErrorResponse),
       };
     }
 
-    let requestBody: { playerName?: string };
+    let requestBody: unknown;
     try {
       requestBody = JSON.parse(event.body);
     } catch (error) {
@@ -218,30 +232,39 @@ export async function joinRoomHandler(
         headers: CORS_HEADERS,
         body: JSON.stringify({
           error: {
-            code: 'INVALID_REQUEST',
-            message: 'リクエストボディが不正なJSON形式です',
+            code: 'INVALID_JSON',
+            message: 'Request body must be valid JSON',
           },
         } as ErrorResponse),
       };
     }
 
-    // バリデーション
-    if (!requestBody.playerName) {
+    // playerNameのバリデーション
+    const validation = validatePlayerName((requestBody as any)?.playerName);
+    if (!validation.success) {
       return {
         statusCode: 400,
         headers: CORS_HEADERS,
         body: JSON.stringify({
           error: {
             code: 'VALIDATION_ERROR',
-            message: 'playerName は必須パラメータです',
+            message: 'Invalid request parameters',
+            details: validation.errors.reduce(
+              (acc, err) => ({ ...acc, [err.field]: err.message }),
+              {}
+            ),
           },
         } as ErrorResponse),
       };
     }
 
-    // RoomService を使用してルームに参加
-    const roomService = new RoomService();
-    const result = await roomService.joinRoom(roomId, requestBody.playerName);
+    // サービス初期化（Repository層を経由）
+    const tableName = process.env.DYNAMODB_ROOMS_TABLE || 'FiveBomber-Rooms';
+    const roomRepository = new RoomRepository(tableName);
+    const roomService = new RoomService(roomRepository);
+
+    // ルーム参加
+    const result = await roomService.joinRoom(roomId, validation.data);
 
     // エラーハンドリング
     if (!result.success) {
@@ -352,8 +375,12 @@ export async function leaveRoomHandler(
       };
     }
 
-    // RoomService を使用してルームから退出
-    const roomService = new RoomService();
+    // サービス初期化（Repository層を経由）
+    const tableName = process.env.DYNAMODB_ROOMS_TABLE || 'FiveBomber-Rooms';
+    const roomRepository = new RoomRepository(tableName);
+    const roomService = new RoomService(roomRepository);
+
+    // ルーム退出
     const result = await roomService.leaveRoom(roomId, playerId);
 
     // エラーハンドリング

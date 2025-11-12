@@ -16,4 +16,12 @@ export type Result<T, E> =
 export type RepositoryError =
   | { type: 'ConnectionError'; message: string }
   | { type: 'ValidationError'; message: string }
-  | { type: 'NotFoundError'; id: string };
+  | { type: 'NotFoundError'; sessionId: string };
+
+/**
+ * Service error types
+ */
+export type ServiceError =
+  | { type: 'ValidationError'; message: string }
+  | { type: 'DatabaseError'; message: string }
+  | { type: 'NotFoundError'; message: string };
