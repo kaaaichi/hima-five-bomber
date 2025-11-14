@@ -1,0 +1,44 @@
+{
+  "mcpServers": {
+    "aws-serverless": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@awslabs/aws-serverless-mcp-server"
+      ],
+      "env": {
+        "AWS_PROFILE": "default",
+        "AWS_REGION": "ap-northeast-1"
+      }
+    },
+    "aws-lambda": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@awslabs/lambda-tool-mcp-server"
+      ],
+      "env": {
+        "AWS_PROFILE": "default",
+        "AWS_REGION": "ap-northeast-1"
+      }
+    },
+    "aws-docs": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@awslabs/aws-documentation-mcp-server"
+      ]
+    },
+    "aws-api": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@awslabs/aws-api-mcp-server"
+      ],
+      "env": {
+        "AWS_PROFILE": "default",
+        "AWS_REGION": "ap-northeast-1"
+      }
+    }
+  }
+}
