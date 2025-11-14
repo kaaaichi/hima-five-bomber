@@ -115,12 +115,21 @@ jobs:
           cd backend
           ECR_REGISTRY=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com
 
-          # セマンティックバージョンとコミットハッシュの両方でタグ付け
+          # セマンティックバージョンでタグ付けしてpush
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$VERSION .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$VERSION
 
-          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$VERSION $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
+          # コミットハッシュタグを追加（既に存在する場合はスキップ）
+          if ! aws ecr describe-images \
+              --repository-name $ECR_REPOSITORY \
+              --image-ids imageTag=${{ github.sha }} \
+              --region $AWS_REGION >/dev/null 2>&1; then
+            docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$VERSION $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
+            docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
+            echo "Pushed commit hash tag: ${{ github.sha }}"
+          else
+            echo "Commit hash tag ${{ github.sha }} already exists, skipping"
+          fi
 
           # Lambda関数更新（セマンティックバージョンを使用）
           LAMBDA_FUNCTIONS=$(aws lambda list-functions \
