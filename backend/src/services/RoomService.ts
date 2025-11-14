@@ -356,4 +356,33 @@ export class RoomService {
       };
     }
   }
+
+  /**
+   * ルームを取得する
+   * @param roomId ルームID
+   * @returns ルーム情報
+   */
+  async getRoom(roomId: string): Promise<Result<Room, string>> {
+    try {
+      // Repositoryを使用してルームを取得
+      const room = await this.roomRepository.findById(roomId);
+
+      if (!room) {
+        return {
+          success: false,
+          error: 'Room not found',
+        };
+      }
+
+      return {
+        success: true,
+        value: room,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: `Failed to get room: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      };
+    }
+  }
 }

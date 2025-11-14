@@ -31,6 +31,13 @@ interface ErrorResponse {
 }
 
 /**
+ * ルーム参加リクエストボディ型
+ */
+interface JoinRoomRequestBody {
+  playerName?: string;
+}
+
+/**
  * POST /api/rooms - ルーム作成ハンドラー
  * @param event API Gateway イベント
  * @param context Lambda コンテキスト
@@ -60,7 +67,7 @@ export async function createRoomHandler(
     let requestBody: unknown;
     try {
       requestBody = JSON.parse(event.body);
-    } catch (error) {
+    } catch {
       return {
         statusCode: 400,
         headers: CORS_HEADERS,
@@ -180,6 +187,91 @@ export async function createRoomHandler(
 }
 
 /**
+ * GET /api/rooms/:roomId - ルーム取得ハンドラー
+ * @param event API Gateway イベント
+ * @param context Lambda コンテキスト
+ * @returns API Gateway レスポンス
+ */
+export async function getRoomHandler(
+  event: APIGatewayProxyEvent,
+  context: Context
+): Promise<APIGatewayProxyResult> {
+  console.log('GET /api/rooms/:roomId - getRoom handler', {
+    requestId: context.awsRequestId,
+  });
+
+  try {
+    // パスパラメータの取得
+    const roomId = event.pathParameters?.roomId;
+    if (!roomId) {
+      return {
+        statusCode: 400,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'roomId は必須パラメータです',
+          },
+        } as ErrorResponse),
+      };
+    }
+
+    // サービス層の呼び出し
+    const tableName = process.env.DYNAMODB_ROOMS_TABLE || 'FiveBomber-Rooms';
+    const roomRepository = new RoomRepository(tableName);
+    const roomService = new RoomService(roomRepository);
+    const result = await roomService.getRoom(roomId);
+
+    // エラーハンドリング
+    if (!result.success) {
+      if (result.error === 'Room not found') {
+        return {
+          statusCode: 404,
+          headers: CORS_HEADERS,
+          body: JSON.stringify({
+            error: {
+              code: 'NOT_FOUND',
+              message: `Room not found: ${roomId}`,
+            },
+          } as ErrorResponse),
+        };
+      }
+
+      return {
+        statusCode: 500,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({
+          error: {
+            code: 'SERVICE_ERROR',
+            message: result.error || 'Failed to retrieve room',
+          },
+        } as ErrorResponse),
+      };
+    }
+
+    // 成功レスポンス
+    return {
+      statusCode: 200,
+      headers: CORS_HEADERS,
+      body: JSON.stringify(result.value),
+    };
+  } catch (error) {
+    console.error('Unexpected error in getRoomHandler:', error);
+
+    return {
+      statusCode: 500,
+      headers: CORS_HEADERS,
+      body: JSON.stringify({
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'An unexpected error occurred',
+        },
+      } as ErrorResponse),
+    };
+  }
+}
+
+/**
  * POST /api/rooms/:roomId/join - ルーム参加ハンドラー
  * @param event API Gateway イベント
  * @param context Lambda コンテキスト
@@ -226,7 +318,7 @@ export async function joinRoomHandler(
     let requestBody: unknown;
     try {
       requestBody = JSON.parse(event.body);
-    } catch (error) {
+    } catch {
       return {
         statusCode: 400,
         headers: CORS_HEADERS,
@@ -240,7 +332,7 @@ export async function joinRoomHandler(
     }
 
     // playerNameのバリデーション
-    const validation = validatePlayerName((requestBody as any)?.playerName);
+    const validation = validatePlayerName((requestBody as JoinRoomRequestBody)?.playerName);
     if (!validation.success) {
       return {
         statusCode: 400,
@@ -447,6 +539,71 @@ export async function leaveRoomHandler(
   } catch (error) {
     console.error('Unexpected error in leaveRoomHandler:', error);
 
+    return {
+      statusCode: 500,
+      headers: CORS_HEADERS,
+      body: JSON.stringify({
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'An unexpected error occurred',
+        },
+      } as ErrorResponse),
+    };
+  }
+}
+
+/**
+ * 統合ハンドラー - API Gatewayからのルーティング
+ * Lambda Container Imageのエントリーポイント
+ */
+export async function handler(
+  event: APIGatewayProxyEvent,
+  context: Context
+): Promise<APIGatewayProxyResult> {
+  console.log('Rooms handler - Routing request', {
+    httpMethod: event.httpMethod,
+    path: event.path,
+    resource: event.resource,
+  });
+
+  // HTTPメソッドとパスに基づいてルーティング
+  const method = event.httpMethod;
+  const roomId = event.pathParameters?.roomId;
+
+  try {
+    // POST /rooms - ルーム作成
+    if (method === 'POST' && !roomId) {
+      return await createRoomHandler(event, context);
+    }
+
+    // GET /rooms/:roomId - ルーム取得
+    if (method === 'GET' && roomId) {
+      return await getRoomHandler(event, context);
+    }
+
+    // POST /rooms/:roomId/join - ルーム参加
+    if (method === 'POST' && roomId && event.path.endsWith('/join')) {
+      return await joinRoomHandler(event, context);
+    }
+
+    // DELETE /rooms/:roomId/leave - ルーム退出
+    if (method === 'DELETE' && roomId && event.path.endsWith('/leave')) {
+      return await leaveRoomHandler(event, context);
+    }
+
+    // 該当するルートがない場合
+    return {
+      statusCode: 404,
+      headers: CORS_HEADERS,
+      body: JSON.stringify({
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Route not found',
+        },
+      } as ErrorResponse),
+    };
+  } catch (error) {
+    console.error('Unexpected error in rooms handler:', error);
     return {
       statusCode: 500,
       headers: CORS_HEADERS,

@@ -5,7 +5,7 @@
  * タスク3.3: ルーム退出APIのテスト
  */
 
-import { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from 'aws-lambda';
+import { APIGatewayProxyEvent, Context } from 'aws-lambda';
 import { createRoomHandler, joinRoomHandler, leaveRoomHandler } from './rooms';
 import { RoomService } from '../../services/RoomService';
 

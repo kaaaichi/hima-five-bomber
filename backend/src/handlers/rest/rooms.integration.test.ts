@@ -3,12 +3,44 @@
  * APIエンドポイントからDynamoDBまでの統合テスト
  */
 
-import { APIGatewayProxyEvent, Context } from 'aws-lambda';
+import { APIGatewayProxyEvent, APIGatewayEventRequestContext, Context } from 'aws-lambda';
 import { mockClient } from 'aws-sdk-client-mock';
 import { DynamoDBDocumentClient, PutCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
 import { createRoomHandler } from './rooms';
 
 const ddbMock = mockClient(DynamoDBDocumentClient);
+
+// テスト用のrequestContext
+const mockRequestContext: APIGatewayEventRequestContext = {
+  accountId: 'test-account',
+  apiId: 'test-api',
+  protocol: 'HTTP/1.1',
+  httpMethod: 'POST',
+  path: '/api/rooms',
+  stage: 'test',
+  requestId: 'test-request-id',
+  requestTimeEpoch: Date.now(),
+  resourceId: 'test-resource',
+  resourcePath: '/api/rooms',
+  identity: {
+    accessKey: null,
+    accountId: null,
+    apiKey: null,
+    apiKeyId: null,
+    caller: null,
+    clientCert: null,
+    cognitoAuthenticationProvider: null,
+    cognitoAuthenticationType: null,
+    cognitoIdentityId: null,
+    cognitoIdentityPoolId: null,
+    principalOrgId: null,
+    sourceIp: '127.0.0.1',
+    user: null,
+    userAgent: 'test-agent',
+    userArn: null,
+  },
+  authorizer: null,
+};
 
 describe('POST /api/rooms - Integration Tests', () => {
   beforeEach(() => {
@@ -38,7 +70,7 @@ describe('POST /api/rooms - Integration Tests', () => {
         queryStringParameters: null,
         multiValueQueryStringParameters: null,
         stageVariables: null,
-        requestContext: {} as any,
+        requestContext: mockRequestContext,
         resource: '',
       };
 
@@ -99,7 +131,7 @@ describe('POST /api/rooms - Integration Tests', () => {
         queryStringParameters: null,
         multiValueQueryStringParameters: null,
         stageVariables: null,
-        requestContext: {} as any,
+        requestContext: mockRequestContext,
         resource: '',
       };
 
@@ -136,7 +168,7 @@ describe('POST /api/rooms - Integration Tests', () => {
         queryStringParameters: null,
         multiValueQueryStringParameters: null,
         stageVariables: null,
-        requestContext: {} as any,
+        requestContext: mockRequestContext,
         resource: '',
       };
 
@@ -172,7 +204,7 @@ describe('POST /api/rooms - Integration Tests', () => {
         queryStringParameters: null,
         multiValueQueryStringParameters: null,
         stageVariables: null,
-        requestContext: {} as any,
+        requestContext: mockRequestContext,
         resource: '',
       };
 
@@ -208,7 +240,7 @@ describe('POST /api/rooms - Integration Tests', () => {
         queryStringParameters: null,
         multiValueQueryStringParameters: null,
         stageVariables: null,
-        requestContext: {} as any,
+        requestContext: mockRequestContext,
         resource: '',
       };
 
@@ -240,7 +272,7 @@ describe('POST /api/rooms - Integration Tests', () => {
         queryStringParameters: null,
         multiValueQueryStringParameters: null,
         stageVariables: null,
-        requestContext: {} as any,
+        requestContext: mockRequestContext,
         resource: '',
       };
 
@@ -277,7 +309,7 @@ describe('POST /api/rooms - Integration Tests', () => {
         queryStringParameters: null,
         multiValueQueryStringParameters: null,
         stageVariables: null,
-        requestContext: {} as any,
+        requestContext: mockRequestContext,
         resource: '',
       };
 
@@ -316,7 +348,7 @@ describe('POST /api/rooms - Integration Tests', () => {
         queryStringParameters: null,
         multiValueQueryStringParameters: null,
         stageVariables: null,
-        requestContext: {} as any,
+        requestContext: mockRequestContext,
         resource: '',
       };
 
