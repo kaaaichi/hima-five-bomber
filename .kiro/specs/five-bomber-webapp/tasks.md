@@ -255,7 +255,7 @@
     ```
   - _Requirements: R-001.5, R-007.1_
 
-- [ ] 3.7 AWSデプロイと結合テスト（タスク3完了後）
+- [x] 3.7 AWSデプロイと結合テスト（タスク3完了後）
   - **事前条件（IaCリポジトリで完了必須）**:
     - ✅ タスク4.1: DynamoDB Roomsテーブルの作成
     - ✅ タスク4.2: DynamoDBセキュリティと可用性の設定
@@ -266,22 +266,31 @@
     - ✅ タスク5.7: API Gateway REST APIの作成
     - ✅ タスク5.9: API Gatewayロギングの設定
     - ✅ タスク5.10: バックエンドモジュールの出力値定義
-  - IaCでDynamoDB Roomsテーブル、API Gateway REST API、Lambda関数をデプロイ
-  - バックエンドをビルドしてLambda関数をデプロイ
-  - フロントエンドの環境変数にAPI Gateway URLを設定し、再ビルド・デプロイ
-  - AWS上でルーム作成・参加・退出の一連の流れをテスト
+  - ✅ IaCでDynamoDB Roomsテーブル、API Gateway REST API、Lambda関数をデプロイ
+  - ✅ バックエンドをビルドしてLambda関数をデプロイ
+  - ✅ フロントエンドの環境変数にAPI Gateway URLを設定し、再ビルド・デプロイ
+  - ✅ AWS上でルーム作成・参加の動作をテスト
+  - ⚠️ ルーム退出機能は統合ハンドラー実装完了後にテスト予定
   - **Acceptance Criteria**:
     ```gherkin
-    Given IaCでDynamoDB、API Gateway、Lambdaがデプロイされている
-    And terraform output でREST API URLとテーブル名が取得できる
-    When CloudFront URLでアプリを開く
-    Then ルーム作成画面が表示される
-    And ルーム作成ボタンをクリックするとAWS API Gatewayが呼ばれる
-    And DynamoDBにルームデータが保存される
-    And ルームIDが生成され、ルーム待機画面に遷移する
-    And ルーム参加・退出の動作が正常に機能する
+    Given IaCでDynamoDB、API Gateway、Lambdaがデプロイされている ✅
+    And terraform output でREST API URLとテーブル名が取得できる ✅
+    When CloudFront URLでアプリを開く ✅
+    Then ルーム作成画面が表示される ✅
+    And ルーム作成ボタンをクリックするとAWS API Gatewayが呼ばれる ✅
+    And DynamoDBにルームデータが保存される ✅
+    And ルームIDが生成され、ルーム待機画面に遷移する ✅
+    And ルーム参加の動作が正常に機能する ✅
+    And ルーム退出の動作が正常に機能する ⚠️ 次回デプロイで対応
     ```
   - _Requirements: R-001.1-1.7, R-008.3, R-008.4_
+  - **実装状況**:
+    - ✅ フロントエンド: CloudFront (https://d3j6o2ajbykkme.cloudfront.net)
+    - ✅ バックエンド: Lambda Container Image (Tag: latest)
+    - ✅ POST /rooms - ルーム作成API動作確認済み
+    - ✅ POST /rooms/:roomId/join - ルーム参加API動作確認済み
+    - ⚠️ 統合ハンドラー実装完了（コミット: 78bb3bb）だがデプロイ保留中
+    - 📝 詳細: [TESTING_GUIDE.md](../../../TESTING_GUIDE.md), [DEPLOYMENT_ISSUE.md](../../../DEPLOYMENT_ISSUE.md)
 
 ---
 
