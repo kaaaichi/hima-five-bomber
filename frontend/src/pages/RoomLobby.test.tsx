@@ -10,6 +10,14 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { RoomLobby } from './RoomLobby';
 import * as api from '../services/api';
+import { Room } from '../types/models';
+
+// 型のインポート
+interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
 
 // モックの設定
 vi.mock('../services/api');
@@ -481,11 +489,11 @@ describe('RoomLobby Component', () => {
   describe('Acceptance Criteria: ローディング状態', () => {
     it('Given API呼び出しが実行中である When レスポンス待機中である Then ローディングメッセージが表示される', () => {
       // APIモックの設定（遅延）
-      let resolvePromise: (value: any) => void;
-      const promise = new Promise((resolve) => {
+      let resolvePromise: (value: ApiResponse<Room>) => void;
+      const promise = new Promise<ApiResponse<Room>>((resolve) => {
         resolvePromise = resolve;
       });
-      mockedGetRoom.mockReturnValueOnce(promise as any);
+      mockedGetRoom.mockReturnValueOnce(promise);
 
       render(
         <MemoryRouter

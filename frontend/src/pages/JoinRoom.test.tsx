@@ -11,6 +11,13 @@ import { BrowserRouter } from 'react-router-dom';
 import { JoinRoom } from './JoinRoom';
 import * as api from '../services/api';
 
+// 型のインポート
+interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
 // モックの設定
 vi.mock('../services/api');
 const mockedJoinRoom = vi.mocked(api.joinRoom);
@@ -358,11 +365,11 @@ describe('JoinRoom Component', () => {
       const user = userEvent.setup();
 
       // APIモックの設定（遅延）
-      let resolvePromise: (value: any) => void;
-      const promise = new Promise((resolve) => {
+      let resolvePromise: (value: ApiResponse<{ playerId: string }>) => void;
+      const promise = new Promise<ApiResponse<{ playerId: string }>>((resolve) => {
         resolvePromise = resolve;
       });
-      mockedJoinRoom.mockReturnValueOnce(promise as any);
+      mockedJoinRoom.mockReturnValueOnce(promise);
 
       render(
         <BrowserRouter>

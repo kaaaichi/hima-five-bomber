@@ -3,6 +3,8 @@
  * バックエンドAPIとの通信を管理
  */
 
+import { Room } from '../types/models';
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
 
 /**
@@ -117,7 +119,7 @@ export async function joinRoom(
  * @param roomId ルームID
  * @returns ルーム情報
  */
-export async function getRoom(roomId: string): Promise<ApiResponse<any>> {
+export async function getRoom(roomId: string): Promise<ApiResponse<Room>> {
   try {
     const response = await fetch(`${API_BASE_URL}/rooms/${roomId}`, {
       method: 'GET',
