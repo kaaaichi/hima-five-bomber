@@ -100,7 +100,7 @@ jobs:
 
       - name: Build and Deploy Backend
         env:
-          ECR_REPOSITORY: five-bomber-backend
+          ECR_REPOSITORY: hima-five-bomber-prd-lambda
         run: |
           # ECRログイン
           aws ecr get-login-password --region $AWS_REGION | \
@@ -117,7 +117,7 @@ jobs:
 
           # Lambda関数更新
           LAMBDA_FUNCTIONS=$(aws lambda list-functions \
-            --query "Functions[?starts_with(FunctionName, 'five-bomber-')].FunctionName" \
+            --query "Functions[?starts_with(FunctionName, 'hima-five-bomber-prd-')].FunctionName" \
             --output text)
 
           for FUNCTION in $LAMBDA_FUNCTIONS; do

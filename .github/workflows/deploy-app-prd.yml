@@ -8,7 +8,7 @@ on:
 
 env:
   AWS_REGION: ap-northeast-1
-  ECR_REPOSITORY: five-bomber-backend
+  ECR_REPOSITORY: hima-five-bomber-prd-lambda
   CLOUDFRONT_DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
   S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
 
@@ -122,7 +122,7 @@ jobs:
         run: |
           # Lambda関数の一覧を取得（タグでフィルタリング）
           LAMBDA_FUNCTIONS=$(aws lambda list-functions \
-            --query "Functions[?starts_with(FunctionName, 'five-bomber-')].FunctionName" \
+            --query "Functions[?starts_with(FunctionName, 'hima-five-bomber-prd-')].FunctionName" \
             --output text)
 
           # 各Lambda関数を更新
