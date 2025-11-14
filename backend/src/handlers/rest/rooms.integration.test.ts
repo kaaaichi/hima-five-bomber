@@ -3,43 +3,31 @@
  * APIエンドポイントからDynamoDBまでの統合テスト
  */
 
-import { APIGatewayProxyEvent, APIGatewayEventRequestContext, Context } from 'aws-lambda';
+import { APIGatewayProxyEventV2, APIGatewayEventRequestContextV2, Context } from 'aws-lambda';
 import { mockClient } from 'aws-sdk-client-mock';
 import { DynamoDBDocumentClient, PutCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
 import { createRoomHandler } from './rooms';
 
 const ddbMock = mockClient(DynamoDBDocumentClient);
 
-// テスト用のrequestContext
-const mockRequestContext: APIGatewayEventRequestContext = {
+// テスト用のrequestContext (Payload Format v2.0)
+const mockRequestContext: APIGatewayEventRequestContextV2 = {
   accountId: 'test-account',
   apiId: 'test-api',
-  protocol: 'HTTP/1.1',
-  httpMethod: 'POST',
-  path: '/api/rooms',
-  stage: 'test',
-  requestId: 'test-request-id',
-  requestTimeEpoch: Date.now(),
-  resourceId: 'test-resource',
-  resourcePath: '/api/rooms',
-  identity: {
-    accessKey: null,
-    accountId: null,
-    apiKey: null,
-    apiKeyId: null,
-    caller: null,
-    clientCert: null,
-    cognitoAuthenticationProvider: null,
-    cognitoAuthenticationType: null,
-    cognitoIdentityId: null,
-    cognitoIdentityPoolId: null,
-    principalOrgId: null,
+  domainName: 'test.execute-api.ap-northeast-1.amazonaws.com',
+  domainPrefix: 'test',
+  http: {
+    method: 'POST',
+    path: '/api/rooms',
+    protocol: 'HTTP/1.1',
     sourceIp: '127.0.0.1',
-    user: null,
     userAgent: 'test-agent',
-    userArn: null,
   },
-  authorizer: null,
+  requestId: 'test-request-id',
+  routeKey: 'POST /api/rooms',
+  stage: '$default',
+  time: '01/Jan/2025:00:00:00 +0000',
+  timeEpoch: 1704067200000,
 };
 
 describe('POST /api/rooms - Integration Tests', () => {
@@ -59,19 +47,16 @@ describe('POST /api/rooms - Integration Tests', () => {
         hostName: 'Test Host Player',
       };
 
-      const event: APIGatewayProxyEvent = {
-        httpMethod: 'POST',
-        path: '/api/rooms',
-        body: JSON.stringify(requestBody),
+      const event: APIGatewayProxyEventV2 = {
+        version: '2.0',
+        routeKey: 'POST /api/rooms',
+        rawPath: '/api/rooms',
+        rawQueryString: '',
         headers: {},
-        multiValueHeaders: {},
-        isBase64Encoded: false,
-        pathParameters: null,
-        queryStringParameters: null,
-        multiValueQueryStringParameters: null,
-        stageVariables: null,
         requestContext: mockRequestContext,
-        resource: '',
+        body: JSON.stringify(requestBody),
+        pathParameters: undefined,
+        isBase64Encoded: false,
       };
 
       // DynamoDB モック設定
@@ -90,7 +75,7 @@ describe('POST /api/rooms - Integration Tests', () => {
         'Access-Control-Allow-Origin': '*',
       });
 
-      const responseBody = JSON.parse(result.body);
+      const responseBody = JSON.parse(result.body!);
       expect(responseBody).toHaveProperty('roomId');
       expect(responseBody).toHaveProperty('hostId');
       expect(responseBody.roomId).toMatch(/^[A-Z0-9]{6}$/);
@@ -120,19 +105,16 @@ describe('POST /api/rooms - Integration Tests', () => {
         hostName: 'テストホスト',
       };
 
-      const event: APIGatewayProxyEvent = {
-        httpMethod: 'POST',
-        path: '/api/rooms',
-        body: JSON.stringify(requestBody),
+      const event: APIGatewayProxyEventV2 = {
+        version: '2.0',
+        routeKey: 'POST /api/rooms',
+        rawPath: '/api/rooms',
+        rawQueryString: '',
         headers: {},
-        multiValueHeaders: {},
-        isBase64Encoded: false,
-        pathParameters: null,
-        queryStringParameters: null,
-        multiValueQueryStringParameters: null,
-        stageVariables: null,
         requestContext: mockRequestContext,
-        resource: '',
+        body: JSON.stringify(requestBody),
+        pathParameters: undefined,
+        isBase64Encoded: false,
       };
 
       // DynamoDB モック設定
@@ -144,7 +126,7 @@ describe('POST /api/rooms - Integration Tests', () => {
 
       // Assert
       expect(result.statusCode).toBe(200);
-      const responseBody = JSON.parse(result.body);
+      const responseBody = JSON.parse(result.body!);
       expect(responseBody).toHaveProperty('roomId');
       expect(responseBody).toHaveProperty('hostId');
 
@@ -157,19 +139,16 @@ describe('POST /api/rooms - Integration Tests', () => {
   describe('Validation Error Cases', () => {
     test('Given missing request body WHEN POST /api/rooms is called THEN 400 error is returned', async () => {
       // Arrange
-      const event: APIGatewayProxyEvent = {
-        httpMethod: 'POST',
-        path: '/api/rooms',
-        body: null,
+      const event: APIGatewayProxyEventV2 = {
+        version: '2.0',
+        routeKey: 'POST /api/rooms',
+        rawPath: '/api/rooms',
+        rawQueryString: '',
         headers: {},
-        multiValueHeaders: {},
-        isBase64Encoded: false,
-        pathParameters: null,
-        queryStringParameters: null,
-        multiValueQueryStringParameters: null,
-        stageVariables: null,
         requestContext: mockRequestContext,
-        resource: '',
+        body: undefined,
+        pathParameters: undefined,
+        isBase64Encoded: false,
       };
 
       // Act
@@ -177,7 +156,7 @@ describe('POST /api/rooms - Integration Tests', () => {
 
       // Assert
       expect(result.statusCode).toBe(400);
-      const responseBody = JSON.parse(result.body);
+      const responseBody = JSON.parse(result.body!);
       expect(responseBody.error).toMatchObject({
         code: 'MISSING_BODY',
         message: 'Request body is required',
@@ -193,19 +172,16 @@ describe('POST /api/rooms - Integration Tests', () => {
         hostName: '',
       };
 
-      const event: APIGatewayProxyEvent = {
-        httpMethod: 'POST',
-        path: '/api/rooms',
-        body: JSON.stringify(requestBody),
+      const event: APIGatewayProxyEventV2 = {
+        version: '2.0',
+        routeKey: 'POST /api/rooms',
+        rawPath: '/api/rooms',
+        rawQueryString: '',
         headers: {},
-        multiValueHeaders: {},
-        isBase64Encoded: false,
-        pathParameters: null,
-        queryStringParameters: null,
-        multiValueQueryStringParameters: null,
-        stageVariables: null,
         requestContext: mockRequestContext,
-        resource: '',
+        body: JSON.stringify(requestBody),
+        pathParameters: undefined,
+        isBase64Encoded: false,
       };
 
       // Act
@@ -213,7 +189,7 @@ describe('POST /api/rooms - Integration Tests', () => {
 
       // Assert
       expect(result.statusCode).toBe(400);
-      const responseBody = JSON.parse(result.body);
+      const responseBody = JSON.parse(result.body!);
       expect(responseBody.error.code).toBe('VALIDATION_ERROR');
       expect(responseBody.error.message).toBe('Invalid request parameters');
       expect(responseBody.error.details).toHaveProperty('hostName');
@@ -229,19 +205,16 @@ describe('POST /api/rooms - Integration Tests', () => {
         hostName: '   ',
       };
 
-      const event: APIGatewayProxyEvent = {
-        httpMethod: 'POST',
-        path: '/api/rooms',
-        body: JSON.stringify(requestBody),
+      const event: APIGatewayProxyEventV2 = {
+        version: '2.0',
+        routeKey: 'POST /api/rooms',
+        rawPath: '/api/rooms',
+        rawQueryString: '',
         headers: {},
-        multiValueHeaders: {},
-        isBase64Encoded: false,
-        pathParameters: null,
-        queryStringParameters: null,
-        multiValueQueryStringParameters: null,
-        stageVariables: null,
         requestContext: mockRequestContext,
-        resource: '',
+        body: JSON.stringify(requestBody),
+        pathParameters: undefined,
+        isBase64Encoded: false,
       };
 
       // Act
@@ -249,7 +222,7 @@ describe('POST /api/rooms - Integration Tests', () => {
 
       // Assert
       expect(result.statusCode).toBe(400);
-      const responseBody = JSON.parse(result.body);
+      const responseBody = JSON.parse(result.body!);
       expect(responseBody.error.code).toBe('VALIDATION_ERROR');
     });
   });
@@ -261,19 +234,16 @@ describe('POST /api/rooms - Integration Tests', () => {
         hostName: 'Test Host',
       };
 
-      const event: APIGatewayProxyEvent = {
-        httpMethod: 'POST',
-        path: '/api/rooms',
-        body: JSON.stringify(requestBody),
+      const event: APIGatewayProxyEventV2 = {
+        version: '2.0',
+        routeKey: 'POST /api/rooms',
+        rawPath: '/api/rooms',
+        rawQueryString: '',
         headers: {},
-        multiValueHeaders: {},
-        isBase64Encoded: false,
-        pathParameters: null,
-        queryStringParameters: null,
-        multiValueQueryStringParameters: null,
-        stageVariables: null,
         requestContext: mockRequestContext,
-        resource: '',
+        body: JSON.stringify(requestBody),
+        pathParameters: undefined,
+        isBase64Encoded: false,
       };
 
       // DynamoDBエラーをシミュレート
@@ -285,7 +255,7 @@ describe('POST /api/rooms - Integration Tests', () => {
 
       // Assert
       expect(result.statusCode).toBe(500);
-      const responseBody = JSON.parse(result.body);
+      const responseBody = JSON.parse(result.body!);
       expect(responseBody.error.code).toBe('INTERNAL_ERROR');
       expect(responseBody.error.message).toContain('DynamoDB connection timeout');
     });
@@ -298,19 +268,16 @@ describe('POST /api/rooms - Integration Tests', () => {
         hostName: 'Test Host',
       };
 
-      const event: APIGatewayProxyEvent = {
-        httpMethod: 'POST',
-        path: '/api/rooms',
-        body: JSON.stringify(requestBody),
+      const event: APIGatewayProxyEventV2 = {
+        version: '2.0',
+        routeKey: 'POST /api/rooms',
+        rawPath: '/api/rooms',
+        rawQueryString: '',
         headers: {},
-        multiValueHeaders: {},
-        isBase64Encoded: false,
-        pathParameters: null,
-        queryStringParameters: null,
-        multiValueQueryStringParameters: null,
-        stageVariables: null,
         requestContext: mockRequestContext,
-        resource: '',
+        body: JSON.stringify(requestBody),
+        pathParameters: undefined,
+        isBase64Encoded: false,
       };
 
       // DynamoDB モック設定
@@ -335,21 +302,18 @@ describe('POST /api/rooms - Integration Tests', () => {
         hostName: 'Complete Flow Host',
       };
 
-      const event: APIGatewayProxyEvent = {
-        httpMethod: 'POST',
-        path: '/api/rooms',
-        body: JSON.stringify(requestBody),
+      const event: APIGatewayProxyEventV2 = {
+        version: '2.0',
+        routeKey: 'POST /api/rooms',
+        rawPath: '/api/rooms',
+        rawQueryString: '',
         headers: {
-          'Content-Type': 'application/json',
+          'content-type': 'application/json',
         },
-        multiValueHeaders: {},
-        isBase64Encoded: false,
-        pathParameters: null,
-        queryStringParameters: null,
-        multiValueQueryStringParameters: null,
-        stageVariables: null,
         requestContext: mockRequestContext,
-        resource: '',
+        body: JSON.stringify(requestBody),
+        pathParameters: undefined,
+        isBase64Encoded: false,
       };
 
       // DynamoDB モック設定
@@ -361,7 +325,7 @@ describe('POST /api/rooms - Integration Tests', () => {
 
       // Assert - API Response
       expect(result.statusCode).toBe(200);
-      const responseBody = JSON.parse(result.body);
+      const responseBody = JSON.parse(result.body!);
       const { roomId, hostId } = responseBody;
 
       // Assert - DynamoDB Interaction

@@ -6,7 +6,11 @@
  * リファクタリング: Zodバリデーションとリポジトリ層の統合
  */
 
-import { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from 'aws-lambda';
+import {
+  APIGatewayProxyEventV2,
+  APIGatewayProxyStructuredResultV2,
+  Context,
+} from 'aws-lambda';
 import { RoomService } from '../../services/RoomService';
 import { RoomRepository } from '../../repositories/RoomRepository';
 import { validateCreateRoomRequest, validatePlayerName } from '../../types-shared/schemas';
@@ -39,14 +43,14 @@ interface JoinRoomRequestBody {
 
 /**
  * POST /api/rooms - ルーム作成ハンドラー
- * @param event API Gateway イベント
+ * @param event API Gateway イベント (Payload Format v2.0)
  * @param context Lambda コンテキスト
  * @returns API Gateway レスポンス
  */
 export async function createRoomHandler(
-  event: APIGatewayProxyEvent,
+  event: APIGatewayProxyEventV2,
   context: Context
-): Promise<APIGatewayProxyResult> {
+): Promise<APIGatewayProxyStructuredResultV2> {
   console.log('POST /api/rooms - createRoom handler', { requestId: context.awsRequestId });
 
   try {
@@ -188,14 +192,14 @@ export async function createRoomHandler(
 
 /**
  * GET /api/rooms/:roomId - ルーム取得ハンドラー
- * @param event API Gateway イベント
+ * @param event API Gateway イベント (Payload Format v2.0)
  * @param context Lambda コンテキスト
  * @returns API Gateway レスポンス
  */
 export async function getRoomHandler(
-  event: APIGatewayProxyEvent,
+  event: APIGatewayProxyEventV2,
   context: Context
-): Promise<APIGatewayProxyResult> {
+): Promise<APIGatewayProxyStructuredResultV2> {
   console.log('GET /api/rooms/:roomId - getRoom handler', {
     requestId: context.awsRequestId,
   });
@@ -273,14 +277,14 @@ export async function getRoomHandler(
 
 /**
  * POST /api/rooms/:roomId/join - ルーム参加ハンドラー
- * @param event API Gateway イベント
+ * @param event API Gateway イベント (Payload Format v2.0)
  * @param context Lambda コンテキスト
  * @returns API Gateway レスポンス
  */
 export async function joinRoomHandler(
-  event: APIGatewayProxyEvent,
+  event: APIGatewayProxyEventV2,
   context: Context
-): Promise<APIGatewayProxyResult> {
+): Promise<APIGatewayProxyStructuredResultV2> {
   console.log('POST /api/rooms/:roomId/join - joinRoom handler', {
     requestId: context.awsRequestId,
   });
@@ -437,14 +441,14 @@ export async function joinRoomHandler(
 
 /**
  * DELETE /api/rooms/:roomId/players/:playerId - ルーム退出ハンドラー
- * @param event API Gateway イベント
+ * @param event API Gateway イベント (Payload Format v2.0)
  * @param context Lambda コンテキスト
  * @returns API Gateway レスポンス
  */
 export async function leaveRoomHandler(
-  event: APIGatewayProxyEvent,
+  event: APIGatewayProxyEventV2,
   context: Context
-): Promise<APIGatewayProxyResult> {
+): Promise<APIGatewayProxyStructuredResultV2> {
   console.log('DELETE /api/rooms/:roomId/players/:playerId - leaveRoom handler', {
     requestId: context.awsRequestId,
   });
@@ -554,20 +558,21 @@ export async function leaveRoomHandler(
 
 /**
  * 統合ハンドラー - API Gatewayからのルーティング
- * Lambda Container Imageのエントリーポイント
+ * Lambda Container Imageのエントリーポイント (Payload Format v2.0)
  */
 export async function handler(
-  event: APIGatewayProxyEvent,
+  event: APIGatewayProxyEventV2,
   context: Context
-): Promise<APIGatewayProxyResult> {
+): Promise<APIGatewayProxyStructuredResultV2> {
   console.log('Rooms handler - Routing request', {
-    httpMethod: event.httpMethod,
-    path: event.path,
-    resource: event.resource,
+    method: event.requestContext.http.method,
+    path: event.requestContext.http.path,
+    routeKey: event.routeKey,
+    rawPath: event.rawPath,
   });
 
   // HTTPメソッドとパスに基づいてルーティング
-  const method = event.httpMethod;
+  const method = event.requestContext.http.method;
   const roomId = event.pathParameters?.roomId;
 
   try {
@@ -582,12 +587,12 @@ export async function handler(
     }
 
     // POST /rooms/:roomId/join - ルーム参加
-    if (method === 'POST' && roomId && event.path.endsWith('/join')) {
+    if (method === 'POST' && roomId && event.rawPath.endsWith('/join')) {
       return await joinRoomHandler(event, context);
     }
 
     // DELETE /rooms/:roomId/leave - ルーム退出
-    if (method === 'DELETE' && roomId && event.path.endsWith('/leave')) {
+    if (method === 'DELETE' && roomId && event.rawPath.endsWith('/leave')) {
       return await leaveRoomHandler(event, context);
     }
 
