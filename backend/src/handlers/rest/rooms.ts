@@ -31,6 +31,13 @@ interface ErrorResponse {
 }
 
 /**
+ * ルーム参加リクエストボディ型
+ */
+interface JoinRoomRequestBody {
+  playerName?: string;
+}
+
+/**
  * POST /api/rooms - ルーム作成ハンドラー
  * @param event API Gateway イベント
  * @param context Lambda コンテキスト
@@ -60,7 +67,7 @@ export async function createRoomHandler(
     let requestBody: unknown;
     try {
       requestBody = JSON.parse(event.body);
-    } catch (error) {
+    } catch {
       return {
         statusCode: 400,
         headers: CORS_HEADERS,
@@ -311,7 +318,7 @@ export async function joinRoomHandler(
     let requestBody: unknown;
     try {
       requestBody = JSON.parse(event.body);
-    } catch (error) {
+    } catch {
       return {
         statusCode: 400,
         headers: CORS_HEADERS,
@@ -325,7 +332,7 @@ export async function joinRoomHandler(
     }
 
     // playerNameのバリデーション
-    const validation = validatePlayerName((requestBody as any)?.playerName);
+    const validation = validatePlayerName((requestBody as JoinRoomRequestBody)?.playerName);
     if (!validation.success) {
       return {
         statusCode: 400,

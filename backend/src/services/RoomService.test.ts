@@ -8,7 +8,7 @@
 
 import { RoomService } from './RoomService';
 import { RoomRepository } from '../repositories/RoomRepository';
-import { Room } from '../types-shared/models';
+import { Room, Player } from '../types-shared/models';
 
 // RoomRepository をモック
 jest.mock('../repositories/RoomRepository');
@@ -383,7 +383,7 @@ describe('RoomService', () => {
         expect(updatedRoom).toBeDefined();
         if (updatedRoom) {
           expect(updatedRoom.players.length).toBe(1);
-          expect(updatedRoom.players.find((p: any) => p.playerId === playerId)).toBeUndefined();
+          expect(updatedRoom.players.find((p: Player) => p.playerId === playerId)).toBeUndefined();
         }
       });
     });
