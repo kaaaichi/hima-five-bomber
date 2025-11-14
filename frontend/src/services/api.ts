@@ -3,7 +3,7 @@
  * バックエンドAPIとの通信を管理
  */
 
-import { Room } from '../types/models';
+import type { Room } from '../types/models';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
 

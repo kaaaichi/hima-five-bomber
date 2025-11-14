@@ -10,7 +10,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { RoomLobby } from './RoomLobby';
 import * as api from '../services/api';
-import { Room } from '../types/models';
+import type { Room } from '../types/models';
 
 // 型のインポート
 interface ApiResponse<T> {
