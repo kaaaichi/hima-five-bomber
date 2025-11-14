@@ -1,10 +1,12 @@
 name: Deploy Application (Production)
 
 on:
-  workflow_dispatch: # 手動トリガー
-  push:
-    tags:
-      - 'v*' # vX.X.X形式のタグでトリガー
+  workflow_dispatch: # 手動トリガー（緊急時のみ使用）
+    inputs:
+      version:
+        description: 'Version to deploy (e.g., v1.2.3)'
+        required: true
+        type: string
 
 env:
   AWS_REGION: ap-northeast-1
@@ -106,35 +108,39 @@ jobs:
         id: build-image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
+          VERSION: ${{ inputs.version }}
         run: |
           cd backend
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
-          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+          # セマンティックバージョンとコミットハッシュの両方でタグ付け
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$VERSION .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$VERSION
+
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$VERSION $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
+
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$VERSION" >> $GITHUB_OUTPUT
+          echo "Deployed version: $VERSION (commit: ${{ github.sha }})"
 
       - name: Update Lambda functions
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
+          VERSION: ${{ inputs.version }}
         run: |
           # Lambda関数の一覧を取得（タグでフィルタリング）
           LAMBDA_FUNCTIONS=$(aws lambda list-functions \
             --query "Functions[?starts_with(FunctionName, 'hima-five-bomber-prd-')].FunctionName" \
             --output text)
 
-          # 各Lambda関数を更新
+          # 各Lambda関数を更新（セマンティックバージョンを使用）
           for FUNCTION in $LAMBDA_FUNCTIONS; do
-            echo "Updating Lambda function: $FUNCTION"
+            echo "Updating Lambda function: $FUNCTION to version $VERSION"
             aws lambda update-function-code \
               --function-name $FUNCTION \
-              --image-uri $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+              --image-uri $ECR_REGISTRY/$ECR_REPOSITORY:$VERSION
 
             # 更新完了まで待機
             aws lambda wait function-updated-v2 --function-name $FUNCTION
-            echo "Successfully updated: $FUNCTION"
+            echo "Successfully updated: $FUNCTION to version $VERSION"
           done
 
       - name: Notify deployment success
