@@ -2,8 +2,8 @@ name: Deploy with Manual Approval
 
 on:
   push:
-    branches:
-      - main
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
 
 env:
   AWS_REGION: ap-northeast-1
@@ -102,6 +102,10 @@ jobs:
         env:
           ECR_REPOSITORY: hima-five-bomber-prd-lambda
         run: |
+          # バージョンタグを抽出 (refs/tags/v1.2.3 -> v1.2.3)
+          VERSION=${GITHUB_REF#refs/tags/}
+          echo "Deploying version: $VERSION"
+
           # ECRログイン
           aws ecr get-login-password --region $AWS_REGION | \
             docker login --username AWS --password-stdin \
@@ -110,27 +114,32 @@ jobs:
           # Dockerイメージビルド・プッシュ
           cd backend
           ECR_REGISTRY=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} .
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
-          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} $ECR_REGISTRY/$ECR_REPOSITORY:latest
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
-          # Lambda関数更新
+          # セマンティックバージョンとコミットハッシュの両方でタグ付け
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$VERSION .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$VERSION
+
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$VERSION $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
+
+          # Lambda関数更新（セマンティックバージョンを使用）
           LAMBDA_FUNCTIONS=$(aws lambda list-functions \
             --query "Functions[?starts_with(FunctionName, 'hima-five-bomber-prd-')].FunctionName" \
             --output text)
 
           for FUNCTION in $LAMBDA_FUNCTIONS; do
-            echo "Updating Lambda: $FUNCTION"
+            echo "Updating Lambda: $FUNCTION to version $VERSION"
             aws lambda update-function-code \
               --function-name $FUNCTION \
-              --image-uri $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
+              --image-uri $ECR_REGISTRY/$ECR_REPOSITORY:$VERSION
             aws lambda wait function-updated-v2 --function-name $FUNCTION
           done
 
       - name: Record deployment
         run: |
+          VERSION=${GITHUB_REF#refs/tags/}
           echo "Deployment successful!"
+          echo "Version: $VERSION"
           echo "Commit: ${{ github.sha }}"
           echo "Time: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
           echo "Deployed by: ${{ github.actor }}"
