@@ -43,7 +43,10 @@ describe('RoomRepository', () => {
       expect(getCalls.length).toBe(1);
       expect(getCalls[0].args[0].input).toEqual({
         TableName: testTableName,
-        Key: { roomId },
+        Key: {
+          PK: `ROOM#${roomId}`,
+          SK: `METADATA`,
+        },
       });
     });
 
@@ -88,7 +91,11 @@ describe('RoomRepository', () => {
       expect(putCalls.length).toBe(1);
       expect(putCalls[0].args[0].input).toEqual({
         TableName: testTableName,
-        Item: room,
+        Item: {
+          PK: `ROOM#${room.roomId}`,
+          SK: `METADATA`,
+          ...room,
+        },
       });
     });
 
@@ -123,7 +130,10 @@ describe('RoomRepository', () => {
       expect(deleteCalls.length).toBe(1);
       expect(deleteCalls[0].args[0].input).toEqual({
         TableName: testTableName,
-        Key: { roomId },
+        Key: {
+          PK: `ROOM#${roomId}`,
+          SK: `METADATA`,
+        },
       });
     });
 
