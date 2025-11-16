@@ -314,7 +314,7 @@
     ```
   - _Requirements: R-002.1 (WebSocket通信), R-004.1 (リアルタイム更新)_
 
-- [ ] 4.2 WebSocketメッセージルーティング（バックエンド）
+- [x] 4.2 WebSocketメッセージルーティング（バックエンド）
   - submitAnswerメッセージハンドラーを実装
   - syncGameStateメッセージハンドラーを実装
   - メッセージ型に応じたルーティングロジックを実装
