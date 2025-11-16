@@ -114,89 +114,54 @@ export function useGameState(): UseGameStateReturn {
 
     switch (message.type) {
       case 'questionStart':
-        handleQuestionStart(message.payload);
+        console.log('[useGameState] Question started', message.payload);
+        setGameState({
+          question: message.payload,
+          answers: [],
+          currentTurn: 0,
+          timeRemaining: 30,
+          isPlaying: true,
+        });
         break;
       case 'answerResult':
-        handleAnswerResult(message.payload);
+        console.log('[useGameState] Answer result received', message.payload);
+        setGameState((prev) => ({
+          ...prev,
+          currentTurn: message.payload.nextTurn,
+          answers: [
+            ...prev.answers,
+            {
+              correct: message.payload.correct,
+              score: message.payload.score,
+            },
+          ],
+        }));
         break;
       case 'rankingUpdate':
-        handleRankingUpdate(message.payload);
+        console.log('[useGameState] Ranking updated', message.payload);
+        setGameState((prev) => ({
+          ...prev,
+          rankings: message.payload.rankings,
+        }));
         break;
       case 'gameOver':
-        handleGameOver(message.payload);
+        console.log('[useGameState] Game over', message.payload);
+        setGameState((prev) => ({
+          ...prev,
+          isPlaying: false,
+          gameResult: message.payload,
+        }));
         break;
       case 'error':
-        handleError(message.payload);
+        console.error('[useGameState] Error received', message.payload);
+        setGameState((prev) => ({
+          ...prev,
+          error: message.payload,
+        }));
         break;
       default:
         console.warn('[useGameState] Unknown message type', message);
     }
-  }, []);
-
-  /**
-   * questionStart メッセージ処理
-   */
-  const handleQuestionStart = useCallback((payload: QuestionPayload) => {
-    console.log('[useGameState] Question started', payload);
-    setGameState({
-      question: payload,
-      answers: [],
-      currentTurn: 0,
-      timeRemaining: 30,
-      isPlaying: true,
-    });
-  }, []);
-
-  /**
-   * answerResult メッセージ処理
-   */
-  const handleAnswerResult = useCallback((payload: { correct: boolean; score?: number; nextTurn: number }) => {
-    console.log('[useGameState] Answer result received', payload);
-    setGameState((prev) => ({
-      ...prev,
-      currentTurn: payload.nextTurn,
-      answers: [
-        ...prev.answers,
-        {
-          correct: payload.correct,
-          score: payload.score,
-        },
-      ],
-    }));
-  }, []);
-
-  /**
-   * rankingUpdate メッセージ処理
-   */
-  const handleRankingUpdate = useCallback((payload: RankingPayload) => {
-    console.log('[useGameState] Ranking updated', payload);
-    setGameState((prev) => ({
-      ...prev,
-      rankings: payload.rankings,
-    }));
-  }, []);
-
-  /**
-   * gameOver メッセージ処理
-   */
-  const handleGameOver = useCallback((payload: GameOverPayload) => {
-    console.log('[useGameState] Game over', payload);
-    setGameState((prev) => ({
-      ...prev,
-      isPlaying: false,
-      gameResult: payload,
-    }));
-  }, []);
-
-  /**
-   * error メッセージ処理
-   */
-  const handleError = useCallback((payload: ErrorPayload) => {
-    console.error('[useGameState] Error received', payload);
-    setGameState((prev) => ({
-      ...prev,
-      error: payload,
-    }));
   }, []);
 
   /**

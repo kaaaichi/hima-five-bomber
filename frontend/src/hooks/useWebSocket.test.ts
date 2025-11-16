@@ -34,7 +34,7 @@ class MockWebSocket {
     }, 10);
   }
 
-  send(_data: string) {
+  send() {
     if (this.readyState !== MockWebSocket.OPEN) {
       throw new Error('WebSocket is not open');
     }
@@ -70,6 +70,7 @@ describe('useWebSocket Hook', () => {
     const WebSocketMock = class extends MockWebSocket {
       constructor(url: string) {
         super(url);
+        // eslint-disable-next-line @typescript-eslint/no-this-alias
         mockWebSocket = this;
       }
     };
