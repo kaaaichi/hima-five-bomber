@@ -9,7 +9,7 @@
  */
 export class TextNormalizer {
   /**
-   * 文字列を正規化（トリミング、全角→半角、空白正規化）
+   * 文字列を正規化（トリミング、全角→半角、空白正規化、小文字変換）
    * @param text 入力文字列
    * @returns 正規化された文字列
    */
@@ -22,6 +22,9 @@ export class TextNormalizer {
 
     // 複数の空白を1つに正規化
     normalized = normalized.replace(/\s+/g, ' ');
+
+    // 小文字変換
+    normalized = this.toLowerCase(normalized);
 
     return normalized;
   }

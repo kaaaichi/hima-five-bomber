@@ -17,7 +17,7 @@ describe('TextNormalizer', () => {
      * Acceptance Criteria:
      * Given 入力文字列が"Tokyo"（全角）である
      * When normalize関数を実行する
-     * Then "Tokyo"（半角）に変換される
+     * Then "tokyo"（半角・小文字）に変換される
      */
     it('should convert full-width to half-width', () => {
       // Arrange
@@ -27,7 +27,7 @@ describe('TextNormalizer', () => {
       const result = normalizer.normalize(input);
 
       // Assert
-      expect(result).toBe('Tokyo'); // 半角
+      expect(result).toBe('tokyo'); // 半角・小文字
     });
 
     it('should trim whitespace', () => {

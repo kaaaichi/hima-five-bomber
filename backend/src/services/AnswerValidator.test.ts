@@ -89,7 +89,7 @@ describe('AnswerValidator', () => {
     it('should convert full-width to half-width before matching', () => {
       // Arrange
       const answer = 'Tokyo'; // 全角
-      const correctAnswers = ['Tokyo']; // 半角
+      const correctAnswers = ['tokyo']; // 半角・小文字
       const acceptableVariations = {};
 
       // Act
@@ -97,7 +97,7 @@ describe('AnswerValidator', () => {
 
       // Assert
       expect(result.isCorrect).toBe(true);
-      expect(result.normalizedInput).toBe('Tokyo');
+      expect(result.normalizedInput).toBe('tokyo'); // 半角・小文字
     });
 
     it('should match acceptable variation (katakana)', () => {
