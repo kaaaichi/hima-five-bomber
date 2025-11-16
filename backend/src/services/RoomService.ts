@@ -199,7 +199,7 @@ export class RoomService {
           success: false,
           error: {
             type: 'NotFoundError',
-            id: roomId,
+            message: `Room not found: ${roomId}`,
           },
         };
       }
@@ -302,7 +302,7 @@ export class RoomService {
           success: false,
           error: {
             type: 'NotFoundError',
-            id: roomId,
+            message: `Room not found: ${roomId}`,
           },
         };
       }
@@ -314,7 +314,7 @@ export class RoomService {
           success: false,
           error: {
             type: 'NotFoundError',
-            id: playerId,
+            message: `Player not found: ${playerId}`,
           },
         };
       }

@@ -149,7 +149,7 @@ export async function createRoomHandler(
             body: JSON.stringify({
               error: {
                 code: 'NOT_FOUND',
-                message: `Room not found: ${error.id}`,
+                message: error.message,
               },
             } as ErrorResponse),
           };
@@ -398,7 +398,7 @@ export async function joinRoomHandler(
             body: JSON.stringify({
               error: {
                 code: 'NOT_FOUND',
-                message: `Room not found: ${error.id}`,
+                message: error.message,
               },
             } as ErrorResponse),
           };
@@ -515,7 +515,7 @@ export async function leaveRoomHandler(
             body: JSON.stringify({
               error: {
                 code: 'NOT_FOUND',
-                message: `Resource not found: ${error.id}`,
+                message: error.message,
               },
             } as ErrorResponse),
           };
