@@ -296,7 +296,7 @@
 
 ## 4. WebSocket通信とリアルタイム同期の実装
 
-- [ ] 4.1 WebSocket接続管理（バックエンド）
+- [x] 4.1 WebSocket接続管理（バックエンド）
   - API Gateway WebSocket APIの接続ハンドラーを実装
   - DynamoDB ConnectionsテーブルへのconnectionId記録処理を実装
   - 切断ハンドラーと接続削除処理を実装

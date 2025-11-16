@@ -86,3 +86,13 @@ export interface RankingEntry {
   score: number;
   rank: number;
 }
+
+/**
+ * Connection - WebSocket接続情報
+ */
+export interface Connection {
+  connectionId: string;
+  playerId: string;
+  roomId: string;
+  connectedAt: number;
+}
