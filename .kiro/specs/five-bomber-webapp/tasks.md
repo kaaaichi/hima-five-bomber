@@ -346,9 +346,9 @@
     ```
   - _Requirements: R-004.2 (ランキング更新), R-011.2 (200ms以内配信)_
 
-- [ ] 4.4 WebSocket通信（フロントエンド）
+- [x] 4.4 WebSocket通信（フロントエンド）
   - useWebSocket カスタムHookを実装
-  - Socket.io-clientを使用した接続確立ロジックを実装
+  - ネイティブWebSocket APIを使用した接続確立ロジックを実装
   - 自動再接続機能（指数バックオフ）を実装
   - メッセージ送信・受信の型安全なインターフェースを実装
   - **Acceptance Criteria**:
