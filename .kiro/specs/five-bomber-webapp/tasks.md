@@ -332,7 +332,7 @@
     ```
   - _Requirements: R-002.1, R-010.1 (エラーハンドリング)_
 
-- [ ] 4.3 WebSocketブロードキャスト機能（バックエンド）
+- [x] 4.3 WebSocketブロードキャスト機能（バックエンド）
   - ルーム内の全接続にメッセージを配信する機能を実装
   - DynamoDB Connectionsテーブルからルーム内の接続を取得する処理を実装
   - API Gateway Management APIを使用したメッセージ送信を実装
