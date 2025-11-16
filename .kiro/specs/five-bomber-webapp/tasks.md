@@ -296,7 +296,7 @@
 
 ## 4. WebSocket通信とリアルタイム同期の実装
 
-- [ ] 4.1 WebSocket接続管理（バックエンド）
+- [x] 4.1 WebSocket接続管理（バックエンド）
   - API Gateway WebSocket APIの接続ハンドラーを実装
   - DynamoDB ConnectionsテーブルへのconnectionId記録処理を実装
   - 切断ハンドラーと接続削除処理を実装
@@ -314,7 +314,7 @@
     ```
   - _Requirements: R-002.1 (WebSocket通信), R-004.1 (リアルタイム更新)_
 
-- [ ] 4.2 WebSocketメッセージルーティング（バックエンド）
+- [x] 4.2 WebSocketメッセージルーティング（バックエンド）
   - submitAnswerメッセージハンドラーを実装
   - syncGameStateメッセージハンドラーを実装
   - メッセージ型に応じたルーティングロジックを実装
@@ -332,7 +332,7 @@
     ```
   - _Requirements: R-002.1, R-010.1 (エラーハンドリング)_
 
-- [ ] 4.3 WebSocketブロードキャスト機能（バックエンド）
+- [x] 4.3 WebSocketブロードキャスト機能（バックエンド）
   - ルーム内の全接続にメッセージを配信する機能を実装
   - DynamoDB Connectionsテーブルからルーム内の接続を取得する処理を実装
   - API Gateway Management APIを使用したメッセージ送信を実装
@@ -346,9 +346,9 @@
     ```
   - _Requirements: R-004.2 (ランキング更新), R-011.2 (200ms以内配信)_
 
-- [ ] 4.4 WebSocket通信（フロントエンド）
+- [x] 4.4 WebSocket通信（フロントエンド）
   - useWebSocket カスタムHookを実装
-  - Socket.io-clientを使用した接続確立ロジックを実装
+  - ネイティブWebSocket APIを使用した接続確立ロジックを実装
   - 自動再接続機能（指数バックオフ）を実装
   - メッセージ送信・受信の型安全なインターフェースを実装
   - **Acceptance Criteria**:
@@ -365,7 +365,7 @@
     ```
   - _Requirements: R-002.1, R-004.1, R-010.2 (接続エラー時の再接続)_
 
-- [ ] 4.5 リアルタイム状態同期（フロントエンド）
+- [x] 4.5 リアルタイム状態同期（フロントエンド）
   - useGameState カスタムHookを実装
   - WebSocketメッセージに基づく状態更新ロジックを実装
   - questionStart、answerResult、rankingUpdate、gameOverイベントのハンドリングを実装
