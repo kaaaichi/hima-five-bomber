@@ -8,6 +8,8 @@ import { Result, RepositoryError } from '../types/common';
 import { randomBytes } from 'crypto';
 import { SessionRepository } from '../repositories/SessionRepository';
 import { QuestionService } from './QuestionService';
+import { AnswerValidator } from './AnswerValidator';
+import { SCORING_RULES, GAME_RULES } from '../types-shared/constants';
 
 /**
  * GameServiceエラー型
@@ -33,15 +35,31 @@ export interface StartGameResponse {
 }
 
 /**
+ * 回答結果
+ */
+export interface AnswerResult {
+  correct: boolean;
+  score: number;
+  nextTurn: number;
+  gameCompleted: boolean;
+}
+
+/**
  * GameService - ゲームセッションの状態管理とビジネスロジックを担当
  */
 export class GameService {
   private readonly sessionRepository: SessionRepository;
   private readonly questionService: QuestionService;
+  private readonly answerValidator: AnswerValidator;
 
-  constructor(sessionRepository?: SessionRepository, questionService?: QuestionService) {
+  constructor(
+    sessionRepository?: SessionRepository,
+    questionService?: QuestionService,
+    answerValidator?: AnswerValidator
+  ) {
     this.sessionRepository = sessionRepository || new SessionRepository();
     this.questionService = questionService || new QuestionService();
+    this.answerValidator = answerValidator || new AnswerValidator();
   }
 
   /**
@@ -105,6 +123,110 @@ export class GameService {
         error: {
           type: 'DatabaseError',
           message: `Failed to start game: ${error.message}`,
+        },
+      };
+    }
+  }
+
+  /**
+   * 回答を送信して正誤判定を行う
+   * @param sessionId セッションID
+   * @param playerId プレイヤーID
+   * @param answer 回答
+   * @returns 回答結果
+   */
+  async submitAnswer(
+    sessionId: string,
+    playerId: string,
+    answer: string
+  ): Promise<Result<AnswerResult, GameServiceError>> {
+    try {
+      // セッションを取得
+      const session = await this.sessionRepository.findById(sessionId);
+      if (!session) {
+        return {
+          success: false,
+          error: {
+            type: 'SessionNotFound',
+            message: `Session not found: ${sessionId}`,
+          },
+        };
+      }
+
+      // 問題データを取得
+      const questionResult = await this.questionService.getQuestionById(session.questionId);
+      if (!questionResult.success) {
+        return {
+          success: false,
+          error: {
+            type: 'QuestionNotFound',
+            message: `Failed to retrieve question: ${questionResult.error.message}`,
+          },
+        };
+      }
+
+      const question = questionResult.value;
+
+      // AnswerValidatorで正誤判定
+      const validationResult = this.answerValidator.validate(
+        answer,
+        question.answers,
+        question.acceptableVariations
+      );
+
+      // 回答結果を作成
+      let nextTurn = session.currentTurn;
+      let score = 0;
+      let gameCompleted = false;
+
+      if (validationResult.isCorrect) {
+        // 正解の場合
+        score = SCORING_RULES.SCORE_PER_ANSWER;
+        nextTurn = session.currentTurn + 1;
+
+        // 回答をセッションに追加
+        session.answers.push({
+          playerId,
+          answer,
+          isCorrect: true,
+          timestamp: Date.now(),
+        });
+
+        // 5つの正解が揃ったかチェック
+        const correctAnswersCount = session.answers.filter((a) => a.isCorrect).length;
+        if (correctAnswersCount >= GAME_RULES.REQUIRED_ANSWERS) {
+          gameCompleted = true;
+          session.status = 'completed';
+        }
+      } else {
+        // 不正解の場合、同じプレイヤーが再回答
+        session.answers.push({
+          playerId,
+          answer,
+          isCorrect: false,
+          timestamp: Date.now(),
+        });
+      }
+
+      // セッションを更新
+      session.currentTurn = nextTurn;
+      await this.sessionRepository.save(session);
+
+      return {
+        success: true,
+        value: {
+          correct: validationResult.isCorrect,
+          score,
+          nextTurn,
+          gameCompleted,
+        },
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: {
+          type: 'DatabaseError',
+          message: `Failed to submit answer: ${error.message}`,
         },
       };
     }

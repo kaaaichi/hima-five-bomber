@@ -222,4 +222,173 @@ describe('GameService', () => {
       }
     });
   });
+
+  describe('submitAnswer', () => {
+    /**
+     * Acceptance Criteria:
+     * Given プレイヤーが回答を送信する
+     * When submitAnswerハンドラーが回答を受信する
+     * Then 回答がバリデーションされる
+     * And AnswerValidatorで正誤判定が実行される
+     * And レスポンスに { correct: boolean, score?: number } が含まれる
+     */
+    it('should validate answer and return correct result', async () => {
+      // Arrange
+      const sessionId = 'session-123';
+      const playerId = 'player-1';
+      const answer = 'とうきょう';
+
+      // セッションデータをモック
+      mockSessionRepository.findById.mockResolvedValue({
+        sessionId,
+        roomId: 'room-123',
+        questionId: 'question-456',
+        startedAt: Date.now(),
+        currentTurn: 0,
+        answers: [],
+        status: 'playing',
+      });
+
+      // 問題データをモック
+      mockQuestionService.getQuestionById.mockResolvedValue({
+        success: true,
+        value: {
+          id: 'question-456',
+          question: '日本の首都は？',
+          answers: ['東京', 'Tokyo'],
+          acceptableVariations: {
+            '東京': ['とうきょう', 'トウキョウ'],
+          },
+          category: 'geography',
+          difficulty: 'easy',
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        },
+      });
+
+      mockSessionRepository.save.mockResolvedValue();
+
+      // Act
+      const result = await gameService.submitAnswer(sessionId, playerId, answer);
+
+      // Assert
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.value.correct).toBe(true);
+        expect(result.value.score).toBe(10); // 正解1つあたり10点
+        expect(result.value.nextTurn).toBe(1);
+        expect(result.value.gameCompleted).toBe(false);
+      }
+    });
+
+    it('should return incorrect result for wrong answer', async () => {
+      // Arrange
+      const sessionId = 'session-123';
+      const playerId = 'player-1';
+      const answer = '大阪'; // 不正解
+
+      mockSessionRepository.findById.mockResolvedValue({
+        sessionId,
+        roomId: 'room-123',
+        questionId: 'question-456',
+        startedAt: Date.now(),
+        currentTurn: 0,
+        answers: [],
+        status: 'playing',
+      });
+
+      mockQuestionService.getQuestionById.mockResolvedValue({
+        success: true,
+        value: {
+          id: 'question-456',
+          question: '日本の首都は？',
+          answers: ['東京', 'Tokyo'],
+          acceptableVariations: {
+            '東京': ['とうきょう', 'トウキョウ'],
+          },
+          category: 'geography',
+          difficulty: 'easy',
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        },
+      });
+
+      // Act
+      const result = await gameService.submitAnswer(sessionId, playerId, answer);
+
+      // Assert
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.value.correct).toBe(false);
+        expect(result.value.score).toBe(0);
+        expect(result.value.nextTurn).toBe(0); // 不正解なので同じプレイヤーが再回答
+      }
+    });
+
+    it('should return error when session does not exist', async () => {
+      // Arrange
+      const sessionId = 'invalid-session';
+      const playerId = 'player-1';
+      const answer = '東京';
+
+      mockSessionRepository.findById.mockResolvedValue(null);
+
+      // Act
+      const result = await gameService.submitAnswer(sessionId, playerId, answer);
+
+      // Assert
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.type).toBe('SessionNotFound');
+      }
+    });
+
+    it('should detect game completion when 5 correct answers are collected', async () => {
+      // Arrange
+      const sessionId = 'session-123';
+      const playerId = 'player-5';
+      const answer = '東京';
+
+      mockSessionRepository.findById.mockResolvedValue({
+        sessionId,
+        roomId: 'room-123',
+        questionId: 'question-456',
+        startedAt: Date.now(),
+        currentTurn: 4,
+        answers: [
+          { playerId: 'player-1', answer: '答え1', isCorrect: true, timestamp: Date.now() },
+          { playerId: 'player-2', answer: '答え2', isCorrect: true, timestamp: Date.now() },
+          { playerId: 'player-3', answer: '答え3', isCorrect: true, timestamp: Date.now() },
+          { playerId: 'player-4', answer: '答え4', isCorrect: true, timestamp: Date.now() },
+        ],
+        status: 'playing',
+      });
+
+      mockQuestionService.getQuestionById.mockResolvedValue({
+        success: true,
+        value: {
+          id: 'question-456',
+          question: '日本の首都は？',
+          answers: ['東京', 'Tokyo'],
+          acceptableVariations: {},
+          category: 'geography',
+          difficulty: 'easy',
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        },
+      });
+
+      mockSessionRepository.save.mockResolvedValue();
+
+      // Act
+      const result = await gameService.submitAnswer(sessionId, playerId, answer);
+
+      // Assert
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.value.correct).toBe(true);
+        expect(result.value.gameCompleted).toBe(true);
+      }
+    });
+  });
 });
