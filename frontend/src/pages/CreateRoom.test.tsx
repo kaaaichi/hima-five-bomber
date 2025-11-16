@@ -10,6 +10,18 @@ import { BrowserRouter } from 'react-router-dom';
 import { CreateRoom } from './CreateRoom';
 import * as api from '../services/api';
 
+// 型のインポート
+interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
+interface CreateRoomResponse {
+  roomId: string;
+  hostId: string;
+}
+
 // モックの設定
 vi.mock('../services/api');
 const mockedCreateRoom = vi.mocked(api.createRoom);
@@ -250,11 +262,11 @@ describe('CreateRoom Component', () => {
       const user = userEvent.setup();
 
       // APIモックの設定（遅延）
-      let resolvePromise: (value: any) => void;
-      const promise = new Promise((resolve) => {
+      let resolvePromise: (value: ApiResponse<CreateRoomResponse>) => void;
+      const promise = new Promise<ApiResponse<CreateRoomResponse>>((resolve) => {
         resolvePromise = resolve;
       });
-      mockedCreateRoom.mockReturnValueOnce(promise as any);
+      mockedCreateRoom.mockReturnValueOnce(promise);
 
       render(
         <BrowserRouter>

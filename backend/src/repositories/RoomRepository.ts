@@ -28,7 +28,10 @@ export class RoomRepository {
     const result = await this.client.send(
       new GetCommand({
         TableName: this.tableName,
-        Key: { roomId },
+        Key: {
+          PK: `ROOM#${roomId}`,
+          SK: `METADATA`,
+        },
       })
     );
 
@@ -43,7 +46,11 @@ export class RoomRepository {
     await this.client.send(
       new PutCommand({
         TableName: this.tableName,
-        Item: room,
+        Item: {
+          PK: `ROOM#${room.roomId}`,
+          SK: `METADATA`,
+          ...room,
+        },
       })
     );
   }
@@ -56,7 +63,10 @@ export class RoomRepository {
     await this.client.send(
       new DeleteCommand({
         TableName: this.tableName,
-        Key: { roomId },
+        Key: {
+          PK: `ROOM#${roomId}`,
+          SK: `METADATA`,
+        },
       })
     );
   }
