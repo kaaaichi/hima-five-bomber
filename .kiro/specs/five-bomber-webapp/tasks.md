@@ -365,7 +365,7 @@
     ```
   - _Requirements: R-002.1, R-004.1, R-010.2 (接続エラー時の再接続)_
 
-- [ ] 4.5 リアルタイム状態同期（フロントエンド）
+- [x] 4.5 リアルタイム状態同期（フロントエンド）
   - useGameState カスタムHookを実装
   - WebSocketメッセージに基づく状態更新ロジックを実装
   - questionStart、answerResult、rankingUpdate、gameOverイベントのハンドリングを実装
