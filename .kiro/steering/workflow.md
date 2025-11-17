@@ -60,6 +60,134 @@ npm test
 - **テストが不適切な場合**: テストの意図を理解した上で、必要に応じてテストを修正する
 - **テストを削除することは禁止**（例外: 仕様変更により不要になった場合のみ）
 
+## コード品質チェック
+
+### PR作成前の必須チェック
+
+プルリクエストを作成する前に、以下のチェックを**必ず実行**してください：
+
+#### 1. Lintチェック
+
+**フロントエンド**:
+
+```bash
+cd frontend
+npm run lint
+```
+
+**バックエンド**:
+
+```bash
+cd backend
+npm run lint
+```
+
+**Lint警告・エラーの対応**:
+
+- ❌ **エラー**: 必ず修正してからPR作成
+- ⚠️ **警告（自分が作成したファイル）**: 必ず修正してからPR作成
+- ⚠️ **警告（既存ファイル）**: タスクのスコープ外の場合は修正不要（別タスクで対応）
+
+**よくあるLint警告と修正方法**:
+
+1. **未使用のimport**:
+
+   ```typescript
+   // ❌ NG
+   import { UnusedType } from './types';
+
+   // ✅ OK - 使用していないimportは削除
+   ```
+
+2. **未使用の変数**:
+
+   ```typescript
+   // ❌ NG
+   const unusedVar = 'value';
+
+   // ✅ OK - アンダースコアをプレフィックスに付けて意図的な未使用を明示
+   const _unusedVar = 'value';
+   ```
+
+3. **any型の使用**:
+
+   ```typescript
+   // ❌ NG
+   function process(data: any) { }
+
+   // ✅ OK - 適切な型を指定
+   function process(data: DataType) { }
+   // または
+   function process(data: unknown) { }
+   ```
+
+#### 2. テスト実行
+
+```bash
+# フロントエンド
+cd frontend
+npm test
+
+# バックエンド
+cd backend
+npm test
+```
+
+- ✅ **全テストがパスすること**
+- ⚠️ スキップされているテストがある場合は、理由をコメントで明記すること
+
+#### 3. ビルドチェック
+
+```bash
+# フロントエンド
+cd frontend
+npm run build
+
+# バックエンド
+cd backend
+npm run build
+```
+
+- ✅ **TypeScriptコンパイルエラーがないこと**
+- ✅ **ビルドが成功すること**
+
+#### 4. PR作成前チェックリスト
+
+プルリクエストを作成する前に、以下を確認してください：
+
+- [ ] Lintチェックをパスしている（自分が作成したファイルの警告を解消済み）
+- [ ] 全テストがパスしている
+- [ ] ビルドが成功している
+- [ ] コミットメッセージが適切である（日本語、簡潔で明確）
+- [ ] tasks.mdが更新されている（該当タスクを完了としてマーク）
+- [ ] 変更内容が1タスク分に限定されている
+
+### PR作成時のワークフロー
+
+```bash
+# 1. Lintチェック
+npm run lint
+# ⚠️ 警告がある場合は修正
+
+# 2. テスト実行
+npm test
+# ✅ 全テストがパス
+
+# 3. ビルド確認
+npm run build
+# ✅ ビルド成功
+
+# 4. 変更をコミット
+git add .
+git commit -m 'feat: タスクX.X の実装'
+
+# 5. リモートにプッシュ
+git push origin feature/task-X.X-description
+
+# 6. PRを作成
+gh pr create --title 'feat: タスクX.X の実装' --body '...'
+```
+
 ## ブランチ戦略
 
 ### ブランチ命名規則
