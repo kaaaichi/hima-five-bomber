@@ -6,8 +6,6 @@
 import { GameService } from './GameService';
 import { SessionRepository } from '../repositories/SessionRepository';
 import { QuestionService } from '../services/QuestionService';
-import { GameSession } from '../types-shared/models';
-import { Result } from '../types/common';
 
 // モックの作成
 jest.mock('../repositories/SessionRepository');

@@ -4,7 +4,7 @@
  */
 
 import { GameSession, QuestionPayload } from '../types-shared/models';
-import { Result, RepositoryError } from '../types/common';
+import { Result } from '../types/common';
 import { randomBytes } from 'crypto';
 import { SessionRepository } from '../repositories/SessionRepository';
 import { QuestionService } from './QuestionService';
