@@ -90,6 +90,40 @@ describe('GameBoard', () => {
       expect(input).not.toBeDisabled();
     });
 
+    it('自分の回答順の場合、強調表示メッセージが表示される', () => {
+      const gameState = {
+        ...mockGameState,
+        currentTurn: 0, // プレイヤー1の順番
+      };
+
+      render(
+        <GameBoard
+          gameState={gameState}
+          currentPlayerId="p1" // プレイヤー1としてログイン
+          onSubmitAnswer={vi.fn()}
+        />
+      );
+
+      expect(screen.getByText(/あなたの回答順です！/)).toBeInTheDocument();
+    });
+
+    it('自分が何番目のプレイヤーかが表示される', () => {
+      const gameState = {
+        ...mockGameState,
+        currentTurn: 0,
+      };
+
+      render(
+        <GameBoard
+          gameState={gameState}
+          currentPlayerId="p1" // プレイヤー1（1番目）
+          onSubmitAnswer={vi.fn()}
+        />
+      );
+
+      expect(screen.getByText(/あなたは 1番目のプレイヤーです/)).toBeInTheDocument();
+    });
+
     it('他のプレイヤーの回答順の場合、入力フォームが無効化される', () => {
       const gameState = {
         ...mockGameState,
@@ -106,6 +140,23 @@ describe('GameBoard', () => {
 
       const input = screen.getByPlaceholderText(/回答を入力/);
       expect(input).toBeDisabled();
+    });
+
+    it('他のプレイヤーの回答順の場合、通常のメッセージが表示される', () => {
+      const gameState = {
+        ...mockGameState,
+        currentTurn: 1, // プレイヤー2の順番
+      };
+
+      render(
+        <GameBoard
+          gameState={gameState}
+          currentPlayerId="p1" // プレイヤー1としてログイン
+          onSubmitAnswer={vi.fn()}
+        />
+      );
+
+      expect(screen.getByText(/プレイヤー2さんの回答順です/)).toBeInTheDocument();
     });
   });
 

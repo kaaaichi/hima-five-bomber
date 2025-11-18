@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { GamePlay } from './GamePlay';
 
@@ -15,6 +15,8 @@ vi.mock('../hooks/useWebSocket', () => ({
 import { useGameWithTimer } from '../hooks/useGameWithTimer';
 import { useWebSocket } from '../hooks/useWebSocket';
 
+type MockedFunction = ReturnType<typeof vi.fn>;
+
 describe('GamePlay', () => {
   const mockSendMessage = vi.fn();
   const mockHandleMessage = vi.fn();
@@ -24,12 +26,12 @@ describe('GamePlay', () => {
     vi.clearAllMocks();
 
     // デフォルトのモック実装
-    (useWebSocket as any).mockReturnValue({
+    (useWebSocket as MockedFunction).mockReturnValue({
       isConnected: true,
       sendMessage: mockSendMessage,
     });
 
-    (useGameWithTimer as any).mockReturnValue({
+    (useGameWithTimer as MockedFunction).mockReturnValue({
       gameState: {
         question: {
           questionText: 'テスト問題：日本の首都は？',
@@ -97,7 +99,7 @@ describe('GamePlay', () => {
 
   describe('WebSocket未接続時', () => {
     it('接続中メッセージが表示される', () => {
-      (useWebSocket as any).mockReturnValue({
+      (useWebSocket as MockedFunction).mockReturnValue({
         isConnected: false,
         sendMessage: mockSendMessage,
       });
@@ -110,7 +112,7 @@ describe('GamePlay', () => {
 
   describe('問題未ロード時', () => {
     it('ローディング状態が表示される', () => {
-      (useGameWithTimer as any).mockReturnValue({
+      (useGameWithTimer as MockedFunction).mockReturnValue({
         gameState: {
           question: null,
           answers: [],
@@ -132,12 +134,10 @@ describe('GamePlay', () => {
 
   describe('タイムアップ', () => {
     it('タイムアップ時にWebSocketで通知される', () => {
-      const mockOnTimeUp = vi.fn();
-
       render(<GamePlay roomId="test-room" playerId="p1" />);
 
       // useGameWithTimerが呼ばれた際のonTimeUpコールバックを取得
-      const callArgs = (useGameWithTimer as any).mock.calls[0][0];
+      const callArgs = (useGameWithTimer as MockedFunction).mock.calls[0][0];
       expect(callArgs).toHaveProperty('onTimeUp');
 
       // onTimeUpを実行

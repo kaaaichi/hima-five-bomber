@@ -113,14 +113,27 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         </div>
 
         {/* 回答入力フォーム */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="mb-4">
+        <div
+          className={`rounded-lg shadow-md p-6 transition-all duration-300 ${
+            isMyTurn
+              ? 'bg-blue-50 border-4 border-blue-500 animate-pulse'
+              : 'bg-white border-2 border-gray-200'
+          }`}
+        >
+          <div className="mb-4 space-y-2">
+            <div className="text-center">
+              <span className="inline-block px-4 py-2 bg-gray-800 text-white rounded-full text-sm font-semibold">
+                あなたは {mySlotIndex + 1}番目のプレイヤーです
+              </span>
+            </div>
             {isMyTurn ? (
-              <div className="text-lg font-bold text-blue-600">
-                あなたの回答順です
+              <div className="flex items-center justify-center gap-2 text-2xl font-bold text-blue-600 animate-bounce">
+                <span className="text-3xl">👉</span>
+                <span>あなたの回答順です！</span>
+                <span className="text-3xl">👈</span>
               </div>
             ) : (
-              <div className="text-lg text-gray-600">
+              <div className="text-lg text-center text-gray-600">
                 {currentPlayer?.name || '不明'}さんの回答順です
               </div>
             )}

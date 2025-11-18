@@ -15,7 +15,6 @@ export const GamePlayDemo: React.FC = () => {
   const { timeRemaining, isRunning, start, stop, reset } = useTimer({
     onTimeUp: () => {
       alert('タイムアップ！');
-      stop();
     },
   });
 
