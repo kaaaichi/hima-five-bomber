@@ -60,7 +60,10 @@ export const AnswerSlot: React.FC<AnswerSlotProps> = ({
   const currentClasses = isCurrent ? 'ring-2 ring-blue-500' : '';
 
   return (
-    <div className={`${baseClasses} ${mySlotClasses} ${currentClasses}`}>
+    <div
+      className={`${baseClasses} ${mySlotClasses} ${currentClasses}`}
+      data-testid={`answer-slot-${slotIndex}`}
+    >
       <div className="flex items-center justify-between">
         <span className="text-sm font-semibold text-gray-600">
           {slotIndex + 1}番目

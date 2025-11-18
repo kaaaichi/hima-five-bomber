@@ -4,6 +4,7 @@ import { CreateRoom } from './pages/CreateRoom';
 import { JoinRoom } from './pages/JoinRoom';
 import { RoomLobby } from './pages/RoomLobby';
 import { ComponentDemo } from './pages/ComponentDemo';
+import { GamePlayDemo } from './pages/GamePlayDemo';
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
         <Route path="/join" element={<JoinRoom />} />
         <Route path="/room/:roomId" element={<RoomLobby />} />
         <Route path="/demo" element={<ComponentDemo />} />
+        <Route path="/game-demo" element={<GamePlayDemo />} />
       </Routes>
     </Router>
   );
