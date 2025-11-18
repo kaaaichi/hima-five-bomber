@@ -1,5 +1,5 @@
-import React, { useEffect, useCallback } from 'react';
-import { useWebSocket } from '../hooks/useWebSocket';
+import React, { useCallback, useRef, useEffect } from 'react';
+import { useWebSocket, type WebSocketMessage } from '../hooks/useWebSocket';
 import { useGameWithTimer } from '../hooks/useGameWithTimer';
 import { GameBoard } from '../components/game/GameBoard';
 
@@ -27,6 +27,22 @@ export interface GamePlayProps {
  * ```
  */
 export const GamePlay: React.FC<GamePlayProps> = ({ roomId, playerId }) => {
+  // sendMessageのrefを作成（フック間の依存関係を解決）
+  const sendMessageRef = useRef<((message: WebSocketMessage) => void) | null>(null);
+
+  // ゲーム状態とタイマー管理
+  const { gameState, timeRemaining, handleMessage } = useGameWithTimer({
+    onTimeUp: () => {
+      // タイムアップ時にサーバーに通知
+      if (sendMessageRef.current) {
+        sendMessageRef.current({
+          type: 'timeUp',
+          payload: {},
+        });
+      }
+    },
+  });
+
   // WebSocket接続
   const { isConnected, sendMessage } = useWebSocket({
     roomId,
@@ -35,16 +51,10 @@ export const GamePlay: React.FC<GamePlayProps> = ({ roomId, playerId }) => {
     },
   });
 
-  // ゲーム状態とタイマー管理
-  const { gameState, timeRemaining, handleMessage, reset } = useGameWithTimer({
-    onTimeUp: () => {
-      // タイムアップ時にサーバーに通知
-      sendMessage({
-        type: 'timeUp',
-        payload: {},
-      });
-    },
-  });
+  // sendMessageをrefに保存
+  useEffect(() => {
+    sendMessageRef.current = sendMessage;
+  }, [sendMessage]);
 
   // 回答送信ハンドラー
   const handleSubmitAnswer = useCallback(

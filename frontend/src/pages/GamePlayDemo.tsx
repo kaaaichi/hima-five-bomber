@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { GameBoard } from '../components/game/GameBoard';
 import { useTimer } from '../hooks/useTimer';
 
@@ -34,7 +34,7 @@ export const GamePlayDemo: React.FC = () => {
     { playerId: 'demo-p5', name: 'プレイヤー5', joinedAt: Date.now() },
   ];
 
-  const handleSubmitAnswer = (answer: string) => {
+  const handleSubmitAnswer = () => {
     // ランダムに正誤判定（デモ用）
     const correct = Math.random() > 0.3;
     const score = correct ? 10 + Math.floor(Math.random() * 20) : 0;
