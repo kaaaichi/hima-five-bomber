@@ -29,6 +29,7 @@ describe('useGameWithTimer', () => {
         result.current.handleMessage({
           type: 'questionStart',
           payload: {
+            questionId: 'q-test-1',
             questionText: 'テスト問題',
             category: 'テスト',
             difficulty: 'easy',
@@ -48,6 +49,7 @@ describe('useGameWithTimer', () => {
         result.current.handleMessage({
           type: 'questionStart',
           payload: {
+            questionId: 'q-test-1',
             questionText: 'テスト問題',
             category: 'テスト',
             difficulty: 'easy',
@@ -80,6 +82,7 @@ describe('useGameWithTimer', () => {
         result.current.handleMessage({
           type: 'questionStart',
           payload: {
+            questionId: 'q-test-1',
             questionText: 'テスト問題',
             category: 'テスト',
             difficulty: 'easy',
@@ -104,6 +107,7 @@ describe('useGameWithTimer', () => {
         result.current.handleMessage({
           type: 'questionStart',
           payload: {
+            questionId: 'q-test-1',
             questionText: 'テスト問題',
             category: 'テスト',
             difficulty: 'easy',
@@ -146,6 +150,7 @@ describe('useGameWithTimer', () => {
         result.current.handleMessage({
           type: 'questionStart',
           payload: {
+            questionId: 'q-test-1',
             questionText: 'テスト問題',
             category: 'テスト',
             difficulty: 'easy',
@@ -163,8 +168,9 @@ describe('useGameWithTimer', () => {
         result.current.handleMessage({
           type: 'gameOver',
           payload: {
-            finalScore: 100,
-            rank: 1,
+            success: true,
+            totalScore: 100,
+            timeBonus: 0,
           },
         });
       });
@@ -188,6 +194,7 @@ describe('useGameWithTimer', () => {
         result.current.handleMessage({
           type: 'questionStart',
           payload: {
+            questionId: 'q-test-1',
             questionText: 'テスト問題',
             category: 'テスト',
             difficulty: 'easy',

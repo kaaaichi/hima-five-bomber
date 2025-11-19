@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useEffect } from 'react';
-import { useWebSocket, type WebSocketMessage } from '../hooks/useWebSocket';
+import { useWebSocket } from '../hooks/useWebSocket';
 import { useGameWithTimer } from '../hooks/useGameWithTimer';
 import { GameBoard } from '../components/game/GameBoard';
 
@@ -28,24 +28,25 @@ export interface GamePlayProps {
  */
 export const GamePlay: React.FC<GamePlayProps> = ({ roomId, playerId }) => {
   // sendMessageのrefを作成（フック間の依存関係を解決）
-  const sendMessageRef = useRef<((message: WebSocketMessage) => void) | null>(null);
+  const sendMessageRef = useRef<((type: string, payload: unknown) => void) | null>(null);
 
   // ゲーム状態とタイマー管理
   const { gameState, timeRemaining, handleMessage } = useGameWithTimer({
     onTimeUp: () => {
       // タイムアップ時にサーバーに通知
       if (sendMessageRef.current) {
-        sendMessageRef.current({
-          type: 'timeUp',
-          payload: {},
-        });
+        sendMessageRef.current('timeUp', {});
       }
     },
   });
 
+  // WebSocket URL構築
+  const wsUrl = import.meta.env.VITE_WS_URL
+    ? `${import.meta.env.VITE_WS_URL}?roomId=${roomId}&playerId=${playerId}`
+    : '';
+
   // WebSocket接続
-  const { isConnected, sendMessage } = useWebSocket({
-    roomId,
+  const { isConnected, sendMessage } = useWebSocket(wsUrl, {
     onMessage: (message) => {
       handleMessage(message);
     },
@@ -59,12 +60,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({ roomId, playerId }) => {
   // 回答送信ハンドラー
   const handleSubmitAnswer = useCallback(
     (answer: string) => {
-      sendMessage({
-        type: 'submitAnswer',
-        payload: {
-          answer,
-        },
-      });
+      sendMessage('submitAnswer', { answer });
     },
     [sendMessage]
   );
@@ -81,8 +77,18 @@ export const GamePlay: React.FC<GamePlayProps> = ({ roomId, playerId }) => {
   return (
     <GameBoard
       gameState={{
-        ...gameState,
+        question: gameState.question
+          ? {
+              id: gameState.question.questionId,
+              questionText: gameState.question.questionText,
+              category: gameState.question.category,
+              difficulty: gameState.question.difficulty as 'easy' | 'medium' | 'hard',
+            }
+          : null,
         timeRemaining,
+        currentTurn: gameState.currentTurn,
+        answers: gameState.answers,
+        players: [], // TODO: プレイヤーリストをゲーム状態に追加
       }}
       currentPlayerId={playerId}
       onSubmitAnswer={handleSubmitAnswer}
