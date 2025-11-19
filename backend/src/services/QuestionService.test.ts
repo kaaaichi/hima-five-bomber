@@ -42,9 +42,13 @@ describe('QuestionService', () => {
         updatedAt: Date.now(),
       };
 
-      // S3レスポンスのモック
+      const mockQuestionsFile = {
+        questions: [mockQuestion],
+      };
+
+      // S3レスポンスのモック（questions.jsonを返す）
       const stream = new Readable();
-      stream.push(JSON.stringify(mockQuestion));
+      stream.push(JSON.stringify(mockQuestionsFile));
       stream.push(null);
       const sdkStream = sdkStreamMixin(stream);
 
@@ -65,11 +69,11 @@ describe('QuestionService', () => {
       const getObjectCall = s3Mock.call(0);
       expect(getObjectCall.args[0].input).toEqual({
         Bucket: 'test-questions-bucket',
-        Key: `questions/${questionId}.json`,
+        Key: 'questions.json',
       });
     });
 
-    it('should return error when question does not exist in S3', async () => {
+    it('should return error when questions.json does not exist in S3', async () => {
       // Arrange
       const questionId = 'non-existent-question';
 
@@ -85,7 +89,45 @@ describe('QuestionService', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.type).toBe('NotFoundError');
-        expect(result.error.message).toContain('Question not found');
+        expect(result.error.message).toContain('Questions file not found');
+      }
+    });
+
+    it('should return error when question ID is not found in questions array', async () => {
+      // Arrange
+      const questionId = 'non-existent-id';
+      const mockQuestion: Question = {
+        id: 'existing-id',
+        question: 'テスト問題',
+        answers: ['答え'],
+        acceptableVariations: {},
+        category: 'test',
+        difficulty: 'easy',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+
+      const mockQuestionsFile = {
+        questions: [mockQuestion],
+      };
+
+      const stream = new Readable();
+      stream.push(JSON.stringify(mockQuestionsFile));
+      stream.push(null);
+      const sdkStream = sdkStreamMixin(stream);
+
+      s3Mock.on(GetObjectCommand).resolves({
+        Body: sdkStream,
+      });
+
+      // Act
+      const result = await questionService.getQuestionById(questionId);
+
+      // Assert
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.type).toBe('NotFoundError');
+        expect(result.error.message).toContain(`Question not found: ${questionId}`);
       }
     });
 

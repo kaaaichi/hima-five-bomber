@@ -26,10 +26,11 @@ export class QuestionService {
    */
   async getQuestionById(questionId: string): Promise<Result<Question, RepositoryError>> {
     try {
+      // S3からquestions.jsonを取得
       const response = await this.s3Client.send(
         new GetObjectCommand({
           Bucket: this.bucketName,
-          Key: `questions/${questionId}.json`,
+          Key: 'questions.json',
         })
       );
 
@@ -38,7 +39,7 @@ export class QuestionService {
           success: false,
           error: {
             type: 'NotFoundError',
-            message: `Question not found: ${questionId}`,
+            message: 'Questions file not found',
           },
         };
       }
@@ -47,7 +48,20 @@ export class QuestionService {
       const bodyText = await response.Body.transformToString();
 
       // JSONをパース
-      const question: Question = JSON.parse(bodyText);
+      const data: { questions: Question[] } = JSON.parse(bodyText);
+
+      // 指定されたIDの問題を検索
+      const question = data.questions.find(q => q.id === questionId);
+
+      if (!question) {
+        return {
+          success: false,
+          error: {
+            type: 'NotFoundError',
+            message: `Question not found: ${questionId}`,
+          },
+        };
+      }
 
       return {
         success: true,
@@ -60,7 +74,7 @@ export class QuestionService {
           success: false,
           error: {
             type: 'NotFoundError',
-            message: `Question not found: ${questionId}`,
+            message: 'Questions file not found in S3',
           },
         };
       }
@@ -71,7 +85,7 @@ export class QuestionService {
           success: false,
           error: {
             type: 'ParseError',
-            message: `Failed to parse question JSON: ${error.message}`,
+            message: `Failed to parse questions JSON: ${error.message}`,
           },
         };
       }
