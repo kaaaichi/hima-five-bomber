@@ -23,6 +23,15 @@ interface ApiResponse<T> {
 vi.mock('../services/api');
 const mockedGetRoom = vi.mocked(api.getRoom);
 
+// WebSocketのモック
+const mockSendMessage = vi.fn();
+vi.mock('../hooks/useWebSocket', () => ({
+  useWebSocket: vi.fn(() => ({
+    isConnected: true,
+    sendMessage: mockSendMessage,
+  })),
+}));
+
 // ナビゲーションのモック
 const mockNavigate = vi.fn();
 vi.mock('react-router-dom', async () => {
@@ -56,6 +65,7 @@ const mockRoom = {
 describe('RoomLobby Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    import.meta.env.VITE_WS_URL = 'wss://test.example.com/ws';
   });
 
   describe('Acceptance Criteria: 基本表示', () => {
@@ -299,9 +309,6 @@ describe('RoomLobby Component', () => {
     it('Given ホストで1人以上のプレイヤーがいる When ゲーム開始ボタンをクリックする Then ゲーム開始処理が実行される', async () => {
       const user = userEvent.setup();
 
-      // window.alert のモック
-      const alertMock = vi.spyOn(window, 'alert').mockImplementation(() => {});
-
       mockedGetRoom.mockResolvedValueOnce({
         success: true,
         data: mockRoom,
@@ -335,10 +342,10 @@ describe('RoomLobby Component', () => {
       // ゲーム開始ボタンをクリック
       await user.click(startButton);
 
-      // アラートが表示されること（TODO: 実装時にはゲーム画面に遷移するように修正）
-      expect(alertMock).toHaveBeenCalledWith('ゲーム開始機能は未実装です');
-
-      alertMock.mockRestore();
+      // WebSocketでstartGameメッセージが送信されること
+      await waitFor(() => {
+        expect(mockSendMessage).toHaveBeenCalledWith('startGame', {});
+      });
     });
   });
 
