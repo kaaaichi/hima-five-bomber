@@ -6,6 +6,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { getRoom } from '../services/api';
+import { useWebSocket } from '../hooks/useWebSocket';
 
 // 定数定義
 const MAX_PLAYERS = 5;
@@ -57,6 +58,27 @@ export function RoomLobby() {
   const [room, setRoom] = useState<Room | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isStarting, setIsStarting] = useState(false);
+
+  // WebSocket URL構築
+  const wsUrl = import.meta.env.VITE_WS_URL && roomId && state?.playerId
+    ? `${import.meta.env.VITE_WS_URL}?roomId=${roomId}&playerId=${state.playerId}`
+    : '';
+
+  // WebSocket接続
+  const { isConnected, sendMessage } = useWebSocket(wsUrl, {
+    onMessage: (message) => {
+      // ゲーム開始メッセージを受信したらGamePlayページに遷移
+      if (message.type === 'questionStart') {
+        navigate(`/game/${roomId}`, {
+          state: {
+            roomId,
+            playerId: state?.playerId,
+          },
+        });
+      }
+    },
+  });
 
   useEffect(() => {
     if (!roomId || !state) {
@@ -88,8 +110,21 @@ export function RoomLobby() {
   }, [roomId, state, navigate]);
 
   const handleStartGame = () => {
-    // TODO: ゲーム開始処理を実装
-    alert('ゲーム開始機能は未実装です');
+    if (!isConnected) {
+      setError('WebSocketに接続されていません。再度お試しください。');
+      return;
+    }
+
+    setIsStarting(true);
+    setError(null);
+
+    try {
+      // WebSocketでゲーム開始メッセージを送信
+      sendMessage('startGame', {});
+    } catch (err) {
+      setError('ゲーム開始に失敗しました');
+      setIsStarting(false);
+    }
   };
 
   const handleLeaveRoom = () => {
@@ -184,10 +219,14 @@ export function RoomLobby() {
           {isHost && (
             <button
               onClick={handleStartGame}
-              disabled={room.players.length < MIN_PLAYERS_TO_START}
+              disabled={room.players.length < MIN_PLAYERS_TO_START || isStarting || !isConnected}
               className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-bold py-4 px-6 rounded-lg transition duration-200 transform hover:scale-105 disabled:transform-none shadow-lg disabled:cursor-not-allowed"
             >
-              {room.players.length < MIN_PLAYERS_TO_START
+              {isStarting
+                ? '開始中...'
+                : !isConnected
+                ? '接続中...'
+                : room.players.length < MIN_PLAYERS_TO_START
                 ? UI_MESSAGES.GAME_START_DISABLED
                 : UI_MESSAGES.GAME_START}
             </button>
