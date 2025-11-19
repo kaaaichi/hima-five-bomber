@@ -121,7 +121,7 @@ export function RoomLobby() {
     try {
       // WebSocketでゲーム開始メッセージを送信
       sendMessage('startGame', {});
-    } catch (err) {
+    } catch {
       setError('ゲーム開始に失敗しました');
       setIsStarting(false);
     }
