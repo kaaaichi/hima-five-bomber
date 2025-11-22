@@ -64,7 +64,7 @@ export const AnswerSlot: React.FC<AnswerSlotProps> = ({
       className={`${baseClasses} ${mySlotClasses} ${currentClasses}`}
       data-testid={`answer-slot-${slotIndex}`}
     >
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-2">
         <span className="text-sm font-semibold text-gray-600">
           {slotIndex + 1}番目
         </span>
@@ -72,6 +72,11 @@ export const AnswerSlot: React.FC<AnswerSlotProps> = ({
           <AnswerFeedback correct={answer.correct} score={answer.score} />
         )}
       </div>
+      {answer && 'value' in answer && (
+        <div className="mt-2 pt-2 border-t border-gray-200">
+          <p className="text-lg font-bold text-gray-800">{(answer as any).value}</p>
+        </div>
+      )}
     </div>
   );
 };
