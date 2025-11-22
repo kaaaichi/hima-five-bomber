@@ -9,6 +9,7 @@ export interface Player {
 export function PlayerSetup() {
   const navigate = useNavigate();
   const [playerNames, setPlayerNames] = useState<string[]>(['プレイヤー1', 'プレイヤー2', 'プレイヤー3', 'プレイヤー4', 'プレイヤー5']);
+  const [selectedQuestionId, setSelectedQuestionId] = useState<string>('q001');
 
   const handlePlayerNameChange = (index: number, name: string) => {
     const newNames = [...playerNames];
@@ -28,8 +29,8 @@ export function PlayerSetup() {
     // プレイヤーデータをlocalStorageに保存
     localStorage.setItem('prototype-players', JSON.stringify(players));
 
-    // ゲーム画面に遷移
-    navigate('/prototype/game');
+    // ゲーム画面に遷移（問題IDをパラメータとして渡す）
+    navigate(`/prototype/game?questionId=${selectedQuestionId}`);
   };
 
   return (
@@ -41,6 +42,24 @@ export function PlayerSetup() {
         <p className="text-center text-gray-600 mb-8">
           プレイヤー名を入力してください（最大5人）
         </p>
+
+        {/* 問題選択 */}
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            出題する問題を選択
+          </label>
+          <select
+            value={selectedQuestionId}
+            onChange={(e) => setSelectedQuestionId(e.target.value)}
+            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-800 font-medium"
+          >
+            <option value="q001">問題1</option>
+            <option value="q002">問題2</option>
+            <option value="q003">問題3</option>
+            <option value="q004">問題4</option>
+            <option value="q005">問題5</option>
+          </select>
+        </div>
 
         <div className="space-y-4 mb-8">
           {playerNames.map((name, index) => (
