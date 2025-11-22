@@ -10,6 +10,14 @@ import { AnswerFeedback } from './AnswerFeedback';
 import type { AnswerRecord } from '../../hooks/useGameState';
 
 /**
+ * プロトタイプ版用の拡張回答記録
+ */
+interface ExtendedAnswerRecord extends AnswerRecord {
+  value?: string;
+  playerName?: string;
+}
+
+/**
  * AnswerSlotコンポーネントのProps
  */
 export interface AnswerSlotProps {
@@ -31,7 +39,7 @@ export interface AnswerSlotProps {
   /**
    * 回答記録（未回答の場合はnull）
    */
-  answer: AnswerRecord | null;
+  answer: ExtendedAnswerRecord | null;
 }
 
 /**
@@ -64,7 +72,7 @@ export const AnswerSlot: React.FC<AnswerSlotProps> = ({
       className={`${baseClasses} ${mySlotClasses} ${currentClasses}`}
       data-testid={`answer-slot-${slotIndex}`}
     >
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-2">
         <span className="text-sm font-semibold text-gray-600">
           {slotIndex + 1}番目
         </span>
@@ -72,6 +80,11 @@ export const AnswerSlot: React.FC<AnswerSlotProps> = ({
           <AnswerFeedback correct={answer.correct} score={answer.score} />
         )}
       </div>
+      {answer && answer.value && (
+        <div className="mt-2 pt-2 border-t border-gray-200">
+          <p className="text-lg font-bold text-gray-800">{answer.value}</p>
+        </div>
+      )}
     </div>
   );
 };
