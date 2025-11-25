@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { AnswerGrid } from '../../components/game/AnswerGrid';
 import { AnswerValidator } from '../../utils/answerValidator';
 import { ScoreCalculator } from '../../utils/scoreCalculator';
@@ -26,7 +26,6 @@ interface ExtendedAnswerRecord extends AnswerRecord {
 
 export function PrototypeGame() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const [players, setPlayers] = useState<Player[]>([]);
   const [question, setQuestion] = useState<Question | null>(null);
   const [currentTurn, setCurrentTurn] = useState(0);
@@ -52,34 +51,14 @@ export function PrototypeGame() {
     fetch('/questions.json')
       .then((res) => res.json())
       .then((questions: Question[]) => {
-        // URLパラメータから問題IDを取得（例: ?questionId=q001）
-        const questionId = searchParams.get('questionId');
-
-        let selectedQuestion: Question;
-
-        if (questionId) {
-          // 問題IDが指定されている場合、その問題を検索
-          const foundQuestion = questions.find(q => q.id === questionId);
-          if (foundQuestion) {
-            selectedQuestion = foundQuestion;
-            console.log(`問題ID "${questionId}" を出題します`);
-          } else {
-            // 指定されたIDが見つからない場合は最初の問題
-            selectedQuestion = questions[0];
-            console.warn(`問題ID "${questionId}" が見つかりません。最初の問題を出題します`);
-          }
-        } else {
-          // 問題IDが指定されていない場合は最初の問題
-          selectedQuestion = questions[0];
-          console.log('問題IDが指定されていないため、最初の問題を出題します');
-        }
-
-        setQuestion(selectedQuestion);
+        // ランダムに問題を選択
+        const randomQuestion = questions[Math.floor(Math.random() * questions.length)];
+        setQuestion(randomQuestion);
       })
       .catch((error) => {
         console.error('問題データの読み込みに失敗しました:', error);
       });
-  }, [searchParams]);
+  }, []);
 
   // タイマー管理
   useEffect(() => {
@@ -186,8 +165,8 @@ export function PrototypeGame() {
 
   if (!question || players.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-        <div className="text-white text-2xl">読み込み中...</div>
+      <div className="min-h-screen bg-base-200 flex items-center justify-center">
+        <span className="loading loading-spinner loading-lg text-primary"></span>
       </div>
     );
   }
@@ -195,86 +174,76 @@ export function PrototypeGame() {
   const currentPlayer = players[currentTurn % players.length];
 
   return (
-    <>
-      <div className="min-h-screen bg-gradient-to-br from-orange-400 to-orange-500 p-4 pb-40">
-        <div className="max-w-6xl mx-auto">
-          {/* タイトル */}
-          <div className="text-center mb-8">
-            <h1 className="text-6xl font-black text-white mb-2">
-              💣 FIVE BOMBER 💣
-            </h1>
-          </div>
+    <div className="min-h-screen bg-base-200 pb-36 sm:pb-44">
+      <div className="max-w-3xl mx-auto p-3 sm:p-4">
+        {/* タイトル */}
+        <div className="text-center mb-4 sm:mb-6">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-base-content">
+            ファイブボンバー
+          </h1>
+        </div>
 
-          {/* 問題文 */}
-        <div className="flex justify-center mb-6">
-          <div className="bg-gray-800 border-4 border-white rounded-lg p-8 max-w-4xl w-full">
-            <h2 className="text-4xl font-black text-orange-400 mb-6 text-center">問題</h2>
-            <p className="text-3xl font-bold text-white text-center leading-relaxed">{question.question}</p>
+        {/* 問題文 */}
+        <div className="card bg-base-100 shadow-lg border border-base-300 mb-4 sm:mb-6">
+          <div className="card-body p-4 sm:p-6">
+            <h2 className="text-lg sm:text-xl font-semibold text-primary mb-2 text-center">
+              問題
+            </h2>
+            <p className="text-base sm:text-lg md:text-xl text-base-content text-center leading-relaxed">
+              {question.question}
+            </p>
           </div>
         </div>
 
         {/* 回答グリッド */}
-        <div className="mb-6">
+        <div className="mb-4 sm:mb-6">
           <AnswerGrid
             answers={answers}
             currentTurn={currentTurn}
             mySlotIndex={currentTurn % 5}
           />
         </div>
-        </div>
       </div>
 
       {/* 固定表示の入力エリア */}
-      <div
-        className="fixed bottom-0 left-0 right-0 bg-gray-800 border-t-4 border-white z-50"
-        style={{
-          position: 'fixed',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          zIndex: 50
-        }}
-      >
-        <div className="max-w-6xl mx-auto p-6 relative">
-          {/* フィードバック（入力フォームの上に絶対配置） */}
+      <div className="fixed bottom-0 left-0 right-0 bg-base-100 border-t border-base-300 shadow-lg z-50">
+        <div className="max-w-3xl mx-auto p-3 sm:p-4 relative">
+          {/* フィードバック */}
           {feedback.type && (
             <div
-              className={`absolute left-6 right-6 p-6 rounded-lg border-4 ${
+              className={`absolute left-3 right-3 sm:left-4 sm:right-4 p-3 sm:p-4 rounded-lg shadow-lg ${
                 feedback.type === 'correct'
-                  ? 'bg-green-600 border-white'
-                  : 'bg-red-600 border-white'
+                  ? 'bg-success text-success-content'
+                  : 'bg-error text-error-content'
               }`}
               style={{
                 bottom: '100%',
-                marginBottom: '1rem'
+                marginBottom: '0.5rem'
               }}
             >
-              <div className="flex items-center justify-center gap-6">
-                {feedback.answer && (
-                  <p className="text-4xl font-black text-white">{feedback.answer}</p>
-                )}
-                <p className="text-5xl font-black text-white">{feedback.type === 'correct' ? '⭕ 正解！' : '❌ ' + feedback.message}</p>
-              </div>
+              <p className="text-lg sm:text-xl md:text-2xl font-bold text-center">
+                {feedback.type === 'correct' ? '○ ' : '× '}
+                {feedback.answer && `${feedback.answer} - `}
+                {feedback.type === 'correct' ? '正解！' : feedback.message}
+              </p>
             </div>
           )}
 
-          <div className="flex items-center gap-4 flex-wrap lg:flex-nowrap">
-            {/* コンパクトなタイマー */}
-            <div className="bg-red-600 border-4 border-white rounded-lg px-6 py-3 min-w-[140px]">
-              <div className="text-sm font-bold text-white text-center">残り時間</div>
-              <div className={`text-4xl font-black text-center ${timeRemaining <= 5 ? 'text-yellow-300 animate-pulse' : 'text-white'}`}>
-                {timeRemaining}
-              </div>
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap md:flex-nowrap">
+            {/* タイマー */}
+            <div className={`badge badge-lg px-4 py-3 text-lg font-bold ${
+              timeRemaining <= 5 ? 'badge-error animate-pulse' : 'badge-neutral'
+            }`}>
+              {timeRemaining}秒
             </div>
 
             {/* 現在の回答者 */}
-            <div className="bg-orange-500 border-4 border-white rounded-lg px-6 py-3 min-w-[200px]">
-              <div className="text-sm font-bold text-white text-center">現在の回答者</div>
-              <div className="text-2xl font-black text-white text-center">{currentPlayer?.name}</div>
+            <div className="badge badge-lg badge-outline px-4 py-3 font-medium truncate max-w-[140px] sm:max-w-[180px]">
+              {currentPlayer?.name}
             </div>
 
             {/* 入力フォーム */}
-            <div className="flex-1 flex gap-3 w-full lg:w-auto">
+            <div className="flex-1 flex gap-2 w-full md:w-auto">
               <input
                 type="text"
                 value={inputValue}
@@ -283,12 +252,12 @@ export function PrototypeGame() {
                 placeholder="答えを入力..."
                 disabled={gameStatus !== 'playing'}
                 autoFocus
-                className="flex-1 px-8 py-5 text-2xl font-bold rounded-lg border-4 border-white bg-white focus:ring-4 focus:ring-orange-400 focus:border-orange-400 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                className="input input-bordered flex-1 text-base sm:text-lg"
               />
               <button
                 onClick={handleSubmitAnswer}
                 disabled={gameStatus !== 'playing' || !inputValue.trim()}
-                className="bg-orange-500 hover:bg-orange-600 border-4 border-white px-12 py-5 rounded-lg font-black text-3xl text-white transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                className="btn btn-primary"
               >
                 送信
               </button>
@@ -296,6 +265,6 @@ export function PrototypeGame() {
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }

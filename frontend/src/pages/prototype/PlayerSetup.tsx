@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 export interface Player {
@@ -6,10 +6,42 @@ export interface Player {
   name: string;
 }
 
+interface QuestionOption {
+  id: string;
+  question: string;
+  category: string;
+}
+
+// 問題の表示名を定義
+const getQuestionDisplayName = (questionId: string): string => {
+  const displayNames: Record<string, string> = {
+    'practice-01': '練習問題1',
+    'q001': '問題1',
+    'q002': '問題2',
+    'q003': '問題3',
+    'q004': '問題4',
+    'q005': '問題5',
+  };
+  return displayNames[questionId] || questionId;
+};
+
 export function PlayerSetup() {
   const navigate = useNavigate();
   const [playerNames, setPlayerNames] = useState<string[]>(['プレイヤー1', 'プレイヤー2', 'プレイヤー3', 'プレイヤー4', 'プレイヤー5']);
-  const [selectedQuestionId, setSelectedQuestionId] = useState<string>('q001');
+  const [selectedQuestionId, setSelectedQuestionId] = useState<string>('practice-01');
+  const [questions, setQuestions] = useState<QuestionOption[]>([]);
+
+  // 問題データの読み込み
+  useEffect(() => {
+    fetch('/questions.json')
+      .then((res) => res.json())
+      .then((data: QuestionOption[]) => {
+        setQuestions(data);
+      })
+      .catch((error) => {
+        console.error('問題データの読み込みに失敗しました:', error);
+      });
+  }, []);
 
   const handlePlayerNameChange = (index: number, name: string) => {
     const newNames = [...playerNames];
@@ -34,60 +66,64 @@ export function PlayerSetup() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full">
-        <h1 className="text-3xl font-bold text-center mb-6 text-gray-800">
-          ファイブボンバー
-        </h1>
-        <p className="text-center text-gray-600 mb-8">
-          プレイヤー名を入力してください（最大5人）
-        </p>
+    <div className="min-h-screen bg-base-200 flex items-center justify-center p-4 sm:p-6 md:p-8">
+      <div className="card bg-base-100 shadow-lg w-full max-w-sm sm:max-w-md border border-base-300">
+        <div className="card-body p-6 sm:p-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-center mb-2 text-base-content">
+            ファイブボンバー
+          </h1>
+          <p className="text-center text-base-content/60 mb-6 text-sm sm:text-base">
+            プレイヤー名を入力してください（最大5人）
+          </p>
 
-        {/* 問題選択 */}
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            出題する問題を選択
-          </label>
-          <select
-            value={selectedQuestionId}
-            onChange={(e) => setSelectedQuestionId(e.target.value)}
-            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-800 font-medium"
+          {/* 問題選択 */}
+          <div className="form-control mb-4">
+            <label className="label">
+              <span className="label-text font-medium">出題する問題を選択</span>
+            </label>
+            <select
+              value={selectedQuestionId}
+              onChange={(e) => setSelectedQuestionId(e.target.value)}
+              className="select select-bordered w-full"
+            >
+              {questions.map((q) => (
+                <option key={q.id} value={q.id}>
+                  {getQuestionDisplayName(q.id)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* プレイヤー入力 */}
+          <div className="space-y-3 mb-6">
+            {playerNames.map((name, index) => (
+              <div key={index} className="form-control">
+                <label className="label py-1">
+                  <span className="label-text text-sm">プレイヤー{index + 1}</span>
+                </label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => handlePlayerNameChange(index, e.target.value)}
+                  className="input input-bordered input-sm sm:input-md w-full"
+                  placeholder={`プレイヤー${index + 1}`}
+                />
+              </div>
+            ))}
+          </div>
+
+          {/* 開始ボタン */}
+          <button
+            onClick={handleStartGame}
+            className="btn btn-primary w-full"
           >
-            <option value="q001">問題1</option>
-            <option value="q002">問題2</option>
-            <option value="q003">問題3</option>
-            <option value="q004">問題4</option>
-            <option value="q005">問題5</option>
-          </select>
+            ゲーム開始
+          </button>
+
+          <p className="text-center text-xs sm:text-sm text-base-content/50 mt-4">
+            1台の端末を回しながらプレイします
+          </p>
         </div>
-
-        <div className="space-y-4 mb-8">
-          {playerNames.map((name, index) => (
-            <div key={index}>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                プレイヤー{index + 1}
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => handlePlayerNameChange(index, e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder={`プレイヤー${index + 1}`}
-              />
-            </div>
-          ))}
-        </div>
-
-        <button
-          onClick={handleStartGame}
-          className="w-full bg-gradient-to-r from-green-500 to-blue-500 text-white font-bold py-3 px-6 rounded-lg hover:from-green-600 hover:to-blue-600 transition-all duration-200 transform hover:scale-105"
-        >
-          ゲーム開始
-        </button>
-
-        <p className="text-center text-sm text-gray-500 mt-6">
-          1台の端末を回しながらプレイします
-        </p>
       </div>
     </div>
   );
