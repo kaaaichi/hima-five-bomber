@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AnswerGrid } from '../../components/game/AnswerGrid';
 import { AnswerValidator } from '../../utils/answerValidator';
 import { ScoreCalculator } from '../../utils/scoreCalculator';
@@ -26,6 +26,7 @@ interface ExtendedAnswerRecord extends AnswerRecord {
 
 export function PrototypeGame() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [players, setPlayers] = useState<Player[]>([]);
   const [question, setQuestion] = useState<Question | null>(null);
   const [currentTurn, setCurrentTurn] = useState(0);
@@ -51,14 +52,34 @@ export function PrototypeGame() {
     fetch('/questions.json')
       .then((res) => res.json())
       .then((questions: Question[]) => {
-        // ランダムに問題を選択
-        const randomQuestion = questions[Math.floor(Math.random() * questions.length)];
-        setQuestion(randomQuestion);
+        // URLパラメータから問題IDを取得（例: ?questionId=q001）
+        const questionId = searchParams.get('questionId');
+
+        let selectedQuestion: Question;
+
+        if (questionId) {
+          // 問題IDが指定されている場合、その問題を検索
+          const foundQuestion = questions.find(q => q.id === questionId);
+          if (foundQuestion) {
+            selectedQuestion = foundQuestion;
+            console.log(`問題ID "${questionId}" を出題します`);
+          } else {
+            // 指定されたIDが見つからない場合は最初の問題
+            selectedQuestion = questions[0];
+            console.warn(`問題ID "${questionId}" が見つかりません。最初の問題を出題します`);
+          }
+        } else {
+          // 問題IDが指定されていない場合は最初の問題
+          selectedQuestion = questions[0];
+          console.log('問題IDが指定されていないため、最初の問題を出題します');
+        }
+
+        setQuestion(selectedQuestion);
       })
       .catch((error) => {
         console.error('問題データの読み込みに失敗しました:', error);
       });
-  }, []);
+  }, [searchParams]);
 
   // タイマー管理
   useEffect(() => {
