@@ -68,13 +68,13 @@ export function JoinRoom() {
 
     try {
       const normalizedRoomId = roomId.trim().toUpperCase();
-      const result = await joinRoom(normalizedRoomId.toLowerCase(), playerName.trim());
+      const result = await joinRoom(normalizedRoomId, playerName.trim());
 
       if (result.success && result.data) {
         // ルーム参加成功 - ルーム待機画面に遷移
         navigate(`/room/${normalizedRoomId}`, {
           state: {
-            roomId: normalizedRoomId.toLowerCase(),
+            roomId: normalizedRoomId,
             playerId: result.data.playerId,
             isHost: false,
           },
