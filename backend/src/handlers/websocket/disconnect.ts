@@ -20,8 +20,8 @@ interface WebSocketResponse {
  */
 export const disconnectHandler = async (
   event: APIGatewayProxyWebsocketEventV2,
-  context: Context,
-  connectionRepo: ConnectionRepository = new ConnectionRepository()
+  _context: Context,
+  connectionRepo?: ConnectionRepository
 ): Promise<WebSocketResponse> => {
   const { connectionId } = event.requestContext;
 
@@ -31,7 +31,12 @@ export const disconnectHandler = async (
 
   try {
     // 接続情報をDynamoDBから削除
-    await connectionRepo.delete(connectionId);
+    // テスト時はconnectionRepoが渡される、実運用時は新規作成
+    // Lambda実行時は第3引数にcallback関数が渡されるため、deleteメソッドの存在チェックで判定
+    const repo = (connectionRepo && typeof connectionRepo.delete === 'function')
+      ? connectionRepo
+      : new ConnectionRepository();
+    await repo.delete(connectionId);
 
     console.log('[DISCONNECT] Connection deleted successfully', { connectionId });
 
