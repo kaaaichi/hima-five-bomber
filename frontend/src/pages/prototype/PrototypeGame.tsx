@@ -31,7 +31,7 @@ export function PrototypeGame() {
   const [question, setQuestion] = useState<Question | null>(null);
   const [currentTurn, setCurrentTurn] = useState(0);
   const [answers, setAnswers] = useState<ExtendedAnswerRecord[]>([]);
-  const [timeRemaining, setTimeRemaining] = useState(30);
+  const [timeRemaining, setTimeRemaining] = useState(45);
   const [gameStatus, setGameStatus] = useState<'playing' | 'completed' | 'timeout'>('playing');
   const [inputValue, setInputValue] = useState('');
   const [feedback, setFeedback] = useState<{ type: 'correct' | 'incorrect' | null; message: string; answer?: string }>({ type: null, message: '' });
@@ -111,12 +111,13 @@ export function PrototypeGame() {
       const correctCount = answers.filter((a) => a.correct).length;
       const totalScore = ScoreCalculator.calculateTotalScore(correctCount, timeRemaining);
 
-      // 結果をlocalStorageに保存
+      // 結果をlocalStorageに保存（問題IDも保存）
       localStorage.setItem('prototype-result', JSON.stringify({
         gameStatus,
         correctCount,
         timeRemaining,
         totalScore,
+        questionId: question?.id,
       }));
 
       // 1秒後に結果画面に遷移
@@ -124,7 +125,7 @@ export function PrototypeGame() {
         navigate('/prototype/result');
       }, 1000);
     }
-  }, [gameStatus, answers, timeRemaining, navigate]);
+  }, [gameStatus, answers, timeRemaining, navigate, question?.id]);
 
   const handleSubmitAnswer = () => {
     if (!question || !inputValue.trim()) return;

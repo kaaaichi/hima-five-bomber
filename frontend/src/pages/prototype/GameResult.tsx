@@ -7,6 +7,7 @@ interface ResultData {
   correctCount: number;
   timeRemaining: number;
   totalScore: number;
+  questionId?: string;
 }
 
 export function GameResult() {
@@ -27,7 +28,12 @@ export function GameResult() {
   }, [navigate]);
 
   const handleRetry = () => {
-    navigate('/prototype/game');
+    // 同じ問題でもう一度プレイ
+    if (result?.questionId) {
+      navigate(`/prototype/game?questionId=${result.questionId}`);
+    } else {
+      navigate('/prototype/game');
+    }
   };
 
   const handleNewPlayers = () => {
