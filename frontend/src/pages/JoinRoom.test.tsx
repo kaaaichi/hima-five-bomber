@@ -287,8 +287,8 @@ describe('JoinRoom Component', () => {
       // 送信ボタンをクリック
       await user.click(submitButton);
 
-      // API呼び出しが実行されること（小文字に変換、トリム後の値）
-      expect(mockedJoinRoom).toHaveBeenCalledWith('abc123', 'テストプレイヤー');
+      // API呼び出しが実行されること（大文字に変換、トリム後の値）
+      expect(mockedJoinRoom).toHaveBeenCalledWith('ABC123', 'テストプレイヤー');
     });
 
     it('Given API呼び出しが成功する When レスポンスを受信する Then プレイヤーIDが取得でき、ルーム待機画面に遷移する', async () => {
@@ -321,7 +321,7 @@ describe('JoinRoom Component', () => {
       await waitFor(() => {
         expect(mockNavigate).toHaveBeenCalledWith('/room/ABC123', {
           state: {
-            roomId: 'abc123',
+            roomId: 'ABC123',
             playerId: 'test-player-id-123',
             isHost: false,
           },
@@ -355,8 +355,8 @@ describe('JoinRoom Component', () => {
       await user.type(playerNameInput, '  テストプレイヤー  ');
       await user.click(submitButton);
 
-      // トリムされた値でAPI呼び出しが実行されること（ルームIDは小文字）
-      expect(mockedJoinRoom).toHaveBeenCalledWith('abc123', 'テストプレイヤー');
+      // トリムされた値でAPI呼び出しが実行されること（ルームIDは大文字）
+      expect(mockedJoinRoom).toHaveBeenCalledWith('ABC123', 'テストプレイヤー');
     });
   });
 
