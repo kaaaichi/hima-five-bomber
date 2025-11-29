@@ -111,13 +111,21 @@ export function PrototypeGame() {
       const correctCount = answers.filter((a) => a.correct).length;
       const totalScore = ScoreCalculator.calculateTotalScore(correctCount, timeRemaining);
 
-      // 結果をlocalStorageに保存（問題IDも保存）
+      // 回答例を8つ取得（正解した回答を除く）
+      const answeredValues = answers.map(a => a.value);
+      const exampleAnswers = question?.answers
+        .filter(a => !answeredValues.includes(a))
+        .slice(0, 8) || [];
+
+      // 結果をlocalStorageに保存（問題IDと回答例も保存）
       localStorage.setItem('prototype-result', JSON.stringify({
         gameStatus,
         correctCount,
         timeRemaining,
         totalScore,
         questionId: question?.id,
+        questionText: question?.question,
+        exampleAnswers,
       }));
 
       // 1秒後に結果画面に遷移
@@ -125,7 +133,7 @@ export function PrototypeGame() {
         navigate('/prototype/result');
       }, 1000);
     }
-  }, [gameStatus, answers, timeRemaining, navigate, question?.id]);
+  }, [gameStatus, answers, timeRemaining, navigate, question]);
 
   const handleSubmitAnswer = () => {
     if (!question || !inputValue.trim()) return;

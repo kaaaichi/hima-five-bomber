@@ -8,6 +8,8 @@ interface ResultData {
   timeRemaining: number;
   totalScore: number;
   questionId?: string;
+  questionText?: string;
+  exampleAnswers?: string[];
 }
 
 export function GameResult() {
@@ -104,6 +106,23 @@ export function GameResult() {
             <div className="text-xs text-base-content/50 bg-base-200 rounded-lg p-3">
               <p>スコア計算: 正解1つ = 10点 / 残り1秒 = 1点</p>
             </div>
+
+            {/* 回答例 */}
+            {result.exampleAnswers && result.exampleAnswers.length > 0 && (
+              <div className="bg-base-200 rounded-lg p-4">
+                <p className="text-sm font-semibold text-base-content mb-2">他の回答例:</p>
+                <div className="flex flex-wrap gap-2">
+                  {result.exampleAnswers.map((answer, index) => (
+                    <span
+                      key={index}
+                      className="badge badge-outline badge-sm"
+                    >
+                      {answer}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* アクションボタン */}
