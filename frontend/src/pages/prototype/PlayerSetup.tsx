@@ -12,17 +12,15 @@ interface QuestionOption {
   category: string;
 }
 
-// 問題の表示名を定義
-const getQuestionDisplayName = (questionId: string): string => {
-  const displayNames: Record<string, string> = {
-    'practice-01': '練習問題1',
-    'q001': '問題1',
-    'q002': '問題2',
-    'q003': '問題3',
-    'q004': '問題4',
-    'q005': '問題5',
-  };
-  return displayNames[questionId] || questionId;
+// 問題の表示名を生成（問題<数字>: <カテゴリ>形式）
+const getQuestionDisplayName = (q: QuestionOption): string => {
+  if (q.id.startsWith('practice')) {
+    return `練習問題: ${q.category}`;
+  }
+  // IDから数字部分を抽出（例: q001 → 1, q010 → 10）
+  const match = q.id.match(/q(\d+)/);
+  const questionNumber = match ? parseInt(match[1], 10) : 0;
+  return `問題${questionNumber}: ${q.category}`;
 };
 
 export function PlayerSetup() {
@@ -88,7 +86,7 @@ export function PlayerSetup() {
             >
               {questions.map((q) => (
                 <option key={q.id} value={q.id}>
-                  {getQuestionDisplayName(q.id)}
+                  {getQuestionDisplayName(q)}
                 </option>
               ))}
             </select>
