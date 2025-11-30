@@ -10,17 +10,42 @@ interface QuestionOption {
   id: string;
   question: string;
   category: string;
+  difficulty: string;
 }
 
-// 問題の表示名を生成（問題<数字>: <カテゴリ>形式）
+// 難易度をLv.表記に変換
+const getDifficultyLevel = (difficulty: string): string => {
+  switch (difficulty) {
+    case 'easy':
+      return 'Lv.1';
+    case 'medium':
+      return 'Lv.2';
+    case 'hard':
+      return 'Lv.3';
+    case 'mixed':
+      return 'Lv.2';
+    case 'bonus':
+      return 'Lv.★';
+    default:
+      return 'Lv.?';
+  }
+};
+
+// 問題の表示名を生成（Lv.<難易度> 問題<数字>: <カテゴリ>形式）
 const getQuestionDisplayName = (q: QuestionOption): string => {
+  const level = getDifficultyLevel(q.difficulty);
   if (q.id.startsWith('practice')) {
-    return `練習問題: ${q.category}`;
+    return `${level} 練習問題: ${q.category}`;
+  }
+  if (q.id.startsWith('bonus')) {
+    const match = q.id.match(/bonus-(\d+)/);
+    const bonusNumber = match ? parseInt(match[1], 10) : 0;
+    return `${level} ボーナス${bonusNumber}: ${q.category}`;
   }
   // IDから数字部分を抽出（例: q001 → 1, q010 → 10）
   const match = q.id.match(/q(\d+)/);
   const questionNumber = match ? parseInt(match[1], 10) : 0;
-  return `問題${questionNumber}: ${q.category}`;
+  return `${level} 問題${questionNumber}: ${q.category}`;
 };
 
 export function PlayerSetup() {
