@@ -34,6 +34,13 @@ AWSサーバーレスアーキテクチャを全面採用し、React 19 + TypeSc
 
 ### High-Level Architecture
 
+![High-Level Architecture](./images/architecture.drawio.svg)
+
+> 📝 編集: [architecture.drawio.svg](./images/architecture.drawio.svg) をVS CodeまたはDraw.ioで開く
+
+<details>
+<summary>Mermaid版（テキスト表現）</summary>
+
 ```mermaid
 graph TB
     subgraph Client["クライアント層"]
@@ -71,6 +78,8 @@ graph TB
     LambdaWS --> DynamoDB
     LambdaWS --> S3Questions
 ```
+
+</details>
 
 ### Architecture Integration
 
