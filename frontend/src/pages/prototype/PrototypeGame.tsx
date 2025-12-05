@@ -188,7 +188,8 @@ export function PrototypeGame() {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
+    // IME変換中は送信しない（日本語入力の確定Enterと区別）
+    if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
       handleSubmitAnswer();
     }
   };
